@@ -17,7 +17,9 @@ class InfluenceKernel(object):
         super(InfluenceKernel, self).__init__(*args)
 
     def majorant(self, t, *args, **kwargs):
-        return self._majorant(t, *args, **kwargs, **self._fixed_args)
+        return getattr(
+            self, '_majorant', self._call
+        )(t, *args, **kwargs, **self._fixed_args)
 
     def __call__(self, t, *args, **kwargs):
         return self._call(t, *args, **kwargs, **self._fixed_args)
@@ -28,20 +30,21 @@ class InfluenceKernel(object):
 
 
 class UniModalInfluenceKernel(InfluenceKernel):
-    def mode(self, tau, *args, **kwargs):
-        return 0
+    def mode(self, *args, **kwargs):
+        return self._mode(**kwargs, **self._fixed_args)
 
-    def mode(self, tau, *args, **kwargs):
+    def _mode(self, *args, **kwargs):
         return 0
 
     def _majorant(self, t, *args, **kwargs):
-        mode = self.mode(*args, **kwargs, **self._fixed_args)
-        peak = self(*args, **kwargs, **self._fixed_args)
+        mode = self.mode(*args, **kwargs)
+        peak = self(mode, *args, **kwargs)
+        print('umk', mode, peak)
         return np.choose(
             t > mode,
             [
                 peak,
-                self(t, *args, **kwargs, **self._fixed_args)
+                self(t, *args, **kwargs)
             ]
         )
 
@@ -68,7 +71,7 @@ class MaxwellKernel(UniModalInfluenceKernel):
             -t2 / (2 * tau**2)
         )/(tau**3)
 
-    def mode(self, tau, *args, **kwargs):
+    def _mode(self, tau, *args, **kwargs):
         return np.sqrt(2) * tau
 
     def _integrate(self, t, tau, *args, **kwargs):
@@ -88,13 +91,24 @@ class MultiKernel(InfluenceKernel):
         self.kernel = kernel
         super(MultiKernel, self).__init__(*args, **fixed_args)
 
+    def _fixed_args_each(self):
+        for i in range(self.n_kernels):
+            yield dict([
+                (key, val[i])
+                for key, val
+                in self._fixed_args.iteritems()
+            ])
+
     def majorant(
             self,
             t,
             tau=None,
             kappa=None,
             *args, **kwargs):
-        return self.majorant(t, tau=tau, kappa=kappa, *args, **kwargs)
+
+        return np.sum(
+            self.majorant_each(t, tau=tau, kappa=kappa, *args, **kwargs)
+        )
 
     def __call__(
             self,
@@ -168,21 +182,3 @@ class GenericKernel(InfluenceKernel):
         self._majorant = majorant if majorant is not None else kernel
         self._integral = integral
         super(GenericKernel, self).__init__(*args, **fixed_args)
-
-    def majorant(self, t, *args, **kwargs):
-        return self.majorant(
-            t,
-            *args, **kwargs,
-            **self._fixed_args)
-
-    def __call__(self, t, *args, **kwargs):
-        return self._kernel(
-            t,
-            *args, **kwargs,
-            **self._fixed_args)
-
-    def integrate(self, t, *args, **kwargs):
-        return self._integrate(
-            t,
-            *args, **kwargs,
-            **self._fixed_args)
