@@ -1,0 +1,30 @@
+((*- extends 'article.tplx' -*))
+
+((* block title *))
+\title{Nonparametric estimates of the Hawkes process parameters via generalized linear model - work in progress}
+\author{Dan MacKinlay}
+\date{\today}
+((* endblock title *))
+
+# see http://tex.stackexchange.com/a/49613
+# and http://tex.stackexchange.com/q/213173
+# for bibtex and utf8/utf8x/ucs bullshit
+((* block packages *))
+
+((( super() )))
+%\usepackage[backend=biber]{biblatex}
+%\addbibresource{wsc2017.bib}
+((* endblock packages *))
+
+## suppress code input
+((* block input_group *))
+((* endblock input_group *))
+
+## suppress code output prompts
+((* block output_prompt *))
+((* endblock output_prompt *))
+
+((* block bibliography *))
+\bibliographystyle{apalike}
+\bibliography{wsc2017}
+((* endblock bibliography *))
