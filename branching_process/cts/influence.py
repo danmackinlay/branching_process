@@ -17,11 +17,9 @@ class InfluenceKernel(object):
         super(InfluenceKernel, self).__init__(*args)
 
     def majorant(self, t, *args, **kwargs):
-        return np.squeeze(
-            getattr(
+        return getattr(
                 self, '_majorant', self._call
             )(t, *args, **kwargs, **self._fixed_args)
-        )
 
     def __call__(self, t, *args, **kwargs):
         return np.squeeze(
@@ -32,26 +30,6 @@ class InfluenceKernel(object):
         # some kind of numerical quadrature fallback?
         return np.squeeze(
             self._integrate(t, *args, **kwargs, **self._fixed_args)
-        )
-
-
-class UniModalInfluenceKernel(InfluenceKernel):
-    def mode(self, *args, **kwargs):
-        return self._mode(**kwargs, **self._fixed_args)
-
-    def _mode(self, *args, **kwargs):
-        return 0
-
-    def _majorant(self, t, *args, **kwargs):
-        mode = self.mode(*args, **kwargs)
-        peak = self(mode, *args, **kwargs)
-        print('umk', mode, peak)
-        return np.choose(
-            t > mode,
-            [
-                peak,
-                self(t, *args, **kwargs)
-            ]
         )
 
 
@@ -96,67 +74,17 @@ class MaxwellKernel(UniModalInfluenceKernel):
             -np.square(t)/(2 * np.square(tau))
         )
 
-
-class MultiKernel(InfluenceKernel):
-    def __init__(
-            self,
-            n_kernels=1,
-            kernel=MaxwellKernel(),
-            *args, **fixed_args):
-        self.kernel = kernel
-        super(MultiKernel, self).__init__(*args, **fixed_args)
-
-    def majorant(
-            self,
-            t,
-            *args, **kwargs):
-        return np.sum(
-            self.majorant_each(t, *args, **kwargs),
-            0
+    def _majorant(self, t, *args, **kwargs):
+        mode = self.mode(*args, **kwargs)
+        peak = self(mode, *args, **kwargs)
+        print('umk', mode, peak)
+        return np.choose(
+            t > mode,
+            [
+                peak,
+                self(t, *args, **kwargs)
+            ]
         )
-
-    def __call__(
-            self,
-            t,
-            *args, **kwargs):
-        return np.sum(
-            self.call_each(t, *args, **kwargs),
-            0
-        )
-
-    def integrate(
-            self,
-            t,
-            *args, **kwargs):
-        return np.sum(
-            self.integrate_each(t, *args, **kwargs),
-            0
-        )
-
-    def majorant_each(
-            self,
-            t,
-            *args, **kwargs):
-        return self._majorant(
-            t, *args, **kwargs)
-
-    def call_each(
-            self,
-            t,
-            tau=None,
-            kappa=None,
-            *args, **kwargs):
-        return self._call(
-            t, *args, **kwargs)
-
-    def integrate_each(
-            self,
-            t,
-            tau=None,
-            kappa=None,
-            *args, **kwargs):
-        return self._integrate(
-            t, *args, **kwargs)
 
 
 class GenericKernel(InfluenceKernel):
@@ -175,3 +103,67 @@ class GenericKernel(InfluenceKernel):
         self._majorant = majorant if majorant is not None else kernel
         self._integral = integral
         super(GenericKernel, self).__init__(*args, **fixed_args)
+
+
+class MultiKernel(InfluenceKernel):
+    def __init__(
+            self,
+            n_kernels=1,
+            kernel=MaxwellKernel(),
+            *args, **fixed_args):
+        self.kernel = kernel
+        super(MultiKernel, self).__init__(*args, **fixed_args)
+
+    def majorant(
+            self,
+            t,
+            *args, **kwargs):
+        return np.sum(
+            self.majorant_each(t, *args, **kwargs, **self.fixed_args),
+            0
+        )
+
+    def __call__(
+            self,
+            t,
+            *args, **kwargs):
+        return np.sum(
+            self.call_each(t, *args, **kwargs, **self.fixed_args),
+            0
+        )
+
+    def integrate(
+            self,
+            t,
+            *args, **kwargs):
+        return np.sum(
+            self.integrate_each(t, *args, **kwargs, **self.fixed_args),
+            0
+        )
+
+    def majorant_each(
+            self,
+            t,
+            kappa,
+            *args, **kwargs):
+        return self._majorant(
+            t, *args, **kwargs
+        ) * kappa.reshape(1, -1)
+
+    def call_each(
+            self,
+            t,
+            kappa,
+            *args, **kwargs):
+        return self._call(
+            t, *args, **kwargs
+        ) * kappa.reshape(1, -1)
+
+    def integrate_each(
+            self,
+            t,
+            kappa,
+            *args, **kwargs):
+        return self._integrate(
+            t, *args, **kwargs
+        ) * kappa.reshape(1, -1)
