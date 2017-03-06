@@ -12,41 +12,48 @@ except ImportError as e:
 
 class InfluenceKernel(object):
 
-    def majorant(self, t, tau, *args, **kwargs):
-        return self(t, tau=tau, *args, **kwargs)
+    def __init__(self, *args, **fixed_args):
+        self._fixed_args = fixed_args
+        super(InfluenceKernel, self).__init__(*args)
 
-    def __call__(self, t, tau, *args, **kwargs):
-        raise NotImplementedError()
+    def majorant(self, t, *args, **kwargs):
+        return self._majorant(t, *args, **kwargs, **self._fixed_args)
 
-    def integrate(self, t, tau, *args, **kwargs):
+    def __call__(self, t, *args, **kwargs):
+        return self._call(t, *args, **kwargs, **self._fixed_args)
+
+    def integrate(self, t, *args, **kwargs):
         # some kind of numerical quadrature fallback?
-        raise NotImplementedError()
+        return self._integrate(t, *args, **kwargs, **self._fixed_args)
 
 
 class UniModalInfluenceKernel(InfluenceKernel):
     def mode(self, tau, *args, **kwargs):
         return 0
 
-    def majorant(self, t, tau, *args, **kwargs):
-        mode = self.mode(tau)
-        peak = self(mode, tau)
+    def mode(self, tau, *args, **kwargs):
+        return 0
+
+    def _majorant(self, t, *args, **kwargs):
+        mode = self.mode(*args, **kwargs, **self._fixed_args)
+        peak = self(*args, **kwargs, **self._fixed_args)
         return np.choose(
             t > mode,
             [
                 peak,
-                self(t, tau, *args, **kwargs)
+                self(t, *args, **kwargs, **self._fixed_args)
             ]
         )
 
 
 class ExpKernel(InfluenceKernel):
-    def __call__(self, t, tau, *args, **kwargs):
+    def _call(self, t, tau, *args, **kwargs):
         theta = 1.0 / tau
         return theta * np.exp(-t * theta) * (t >= 0)
 
-    def integrate(self, t, tau, *args, **kwargs):
+    def _integrate(self, t, tau, *args, **kwargs):
         theta = 1.0 / tau
-        return 1-np.exp(-t * theta) * (t >= 0)
+        return 1 - np.exp(-t * theta) * (t >= 0)
 
 
 class MaxwellKernel(UniModalInfluenceKernel):
@@ -55,7 +62,7 @@ class MaxwellKernel(UniModalInfluenceKernel):
     I think I could just use ``scipy.stats.maxwell``?
     That seems not to be autograd differentiable.
     """
-    def __call__(self, t, tau, *args, **kwargs):
+    def _call(self, t, tau, *args, **kwargs):
         t2 = np.square(t)
         return np.sqrt(2.0/np.pi) * t2 * np.exp(
             -t2 / (2 * tau**2)
@@ -64,7 +71,7 @@ class MaxwellKernel(UniModalInfluenceKernel):
     def mode(self, tau, *args, **kwargs):
         return np.sqrt(2) * tau
 
-    def integrate(self, t, tau, *args, **kwargs):
+    def _integrate(self, t, tau, *args, **kwargs):
         return sp.special.erf(
             t / (np.sqrt(2)*tau)
         ) - t * np.sqrt(2.0/np.pi) / tau * np.exp(
@@ -77,8 +84,9 @@ class MultiKernel(InfluenceKernel):
             self,
             n_kernels=1,
             kernel=MaxwellKernel(),
-            *args, **kwargs):
+            *args, **fixed_args):
         self.kernel = kernel
+        super(MultiKernel, self).__init__(*args, **fixed_args)
 
     def majorant(
             self,
@@ -159,7 +167,7 @@ class GenericKernel(InfluenceKernel):
         self._kernel = kernel
         self._majorant = majorant if majorant is not None else kernel
         self._integral = integral
-        self._fixed_args = fixed_args
+        super(GenericKernel, self).__init__(*args, **fixed_args)
 
     def majorant(self, t, *args, **kwargs):
         return self.majorant(
@@ -178,53 +186,3 @@ class GenericKernel(InfluenceKernel):
             t,
             *args, **kwargs,
             **self._fixed_args)
-
-
-class FixedKernel(InfluenceKernel):
-    """
-    if you want some arguments to be fixed, this wrapper will do it.
-    """
-    def __init__(
-            self,
-            kernel,
-            *args,
-            **fixed_args
-            ):
-        self.kernel = kernel
-        self.fixed_args = fixed_args
-
-    def majorant(self, t, *args, **kwargs):
-        return self.kernel.majorant(
-            t,
-            *args, **kwargs,
-            **self.fixed_args)
-
-    def __call__(self, t, *args, **kwargs):
-        return self.kernel(
-            t,
-            *args, **kwargs,
-            **self.fixed_args)
-
-    def integrate(self, t, *args, **kwargs):
-        return self.kernel.integrate(
-            t,
-            *args, **kwargs,
-            **self.fixed_args)
-
-    def majorant_each(self, t, *args, **kwargs):
-        return self.kernel.majorant_each(
-            t,
-            *args, **kwargs,
-            **self.fixed_args)
-
-    def call_each(self, t, *args, **kwargs):
-        return self.kernel.call_each(
-            t,
-            *args, **kwargs,
-            **self.fixed_args)
-
-    def integrate_each(self, t, *args, **kwargs):
-        return self.kernel.integrate_each(
-            t,
-            *args, **kwargs,
-            **self.fixed_args)
