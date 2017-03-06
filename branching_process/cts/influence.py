@@ -19,7 +19,7 @@ class InfluenceKernel(object):
         raise NotImplementedError()
 
     def integrate(self, t, tau, *args, **kwargs):
-        # some kind of quadrature?
+        # some kind of numerical quadrature fallback?
         raise NotImplementedError()
 
 
@@ -72,7 +72,7 @@ class MaxwellKernel(UniModalInfluenceKernel):
         )
 
 
-class MultiKernel(object):
+class MultiKernel(InfluenceKernel):
     def __init__(
             self,
             n_kernels=1,
@@ -160,14 +160,35 @@ class FixedKernel(InfluenceKernel):
     def majorant(self, t, *args, **kwargs):
         return self.kernel.majorant(
             t,
-            *args, **kwargs, **self.fixed_args)
+            *args, **kwargs,
+            **self.fixed_args)
 
     def __call__(self, t, *args, **kwargs):
         return self.kernel(
             t,
-            *args, **kwargs, **self.fixed_args)
+            *args, **kwargs,
+            **self.fixed_args)
 
     def integrate(self, t, *args, **kwargs):
         return self.kernel.integrate(
             t,
-            *args, **kwargs, **self.fixed_args)
+            *args, **kwargs,
+            **self.fixed_args)
+
+    def majorant_each(self, t, *args, **kwargs):
+        return self.kernel.majorant_each(
+            t,
+            *args, **kwargs,
+            **self.fixed_args)
+
+    def call_each(self, t, *args, **kwargs):
+        return self.kernel.call_each(
+            t,
+            *args, **kwargs,
+            **self.fixed_args)
+
+    def integrate_each(self, t, *args, **kwargs):
+        return self.kernel.integrate_each(
+            t,
+            *args, **kwargs,
+            **self.fixed_args)
