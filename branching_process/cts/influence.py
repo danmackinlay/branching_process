@@ -144,6 +144,42 @@ class MultiKernel(InfluenceKernel):
         return out
 
 
+class GenericKernel(InfluenceKernel):
+    """
+    Construct a kernel from some functions
+    """
+    def __init__(
+            self,
+            kernel,
+            majorant=None,
+            integral=None,
+            *args,
+            **fixed_args
+            ):
+        self._kernel = kernel
+        self._majorant = majorant if majorant is not None else kernel
+        self._integral = integral
+        self._fixed_args = fixed_args
+
+    def majorant(self, t, *args, **kwargs):
+        return self.majorant(
+            t,
+            *args, **kwargs,
+            **self._fixed_args)
+
+    def __call__(self, t, *args, **kwargs):
+        return self._kernel(
+            t,
+            *args, **kwargs,
+            **self._fixed_args)
+
+    def integrate(self, t, *args, **kwargs):
+        return self._integrate(
+            t,
+            *args, **kwargs,
+            **self._fixed_args)
+
+
 class FixedKernel(InfluenceKernel):
     """
     if you want some arguments to be fixed, this wrapper will do it.
