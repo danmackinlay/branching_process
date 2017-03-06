@@ -80,28 +80,68 @@ class MultiKernel(object):
             *args, **kwargs):
         self.kernel = kernel
 
-    def majorant(self, t, tau=None, kappa=None, *args, **kwargs):
-        return self(t, tau=tau, kappa=kappa, *args, **kwargs)
+    def majorant(
+            self,
+            t,
+            tau=None,
+            kappa=None,
+            *args, **kwargs):
+        return self.majorant(t, tau=tau, kappa=kappa, *args, **kwargs)
 
-    def __call__(self, t, tau=None, kappa=None, *args, **kwargs):
+    def __call__(
+            self,
+            t,
+            tau=None,
+            kappa=None,
+            *args, **kwargs):
         pass
 
-    def integrate(self, t, tau=None, kappa=None, *args, **kwargs):
+    def integrate(
+            self,
+            t,
+            tau=None,
+            kappa=None,
+            *args, **kwargs):
         pass
 
-    def majorant_all(self, t, tau=None, kappa=None, *args, **kwargs):
+    def majorant_each(
+            self,
+            t,
+            tau=None,
+            kappa=None,
+            *args, **kwargs):
         out = np.zeros(self.n_kernels)
         if np.isscalar(kappa):
             kappa = np.ones(self.n_kernels) * kappa
         for i in range(self.n_kernels):
-            out[i] = self.kernel(t, tau=tau[i], kappa=kappa)
+            out[i] = self.kernel.majorant(t, tau=tau[i], kappa=kappa[i])
         return out
 
-    def call_all(self, t, tau=None, kappa=None, *args, **kwargs):
-        pass
+    def call_each(
+            self,
+            t,
+            tau=None,
+            kappa=None,
+            *args, **kwargs):
+        out = np.zeros(self.n_kernels)
+        if np.isscalar(kappa):
+            kappa = np.ones(self.n_kernels) * kappa
+        for i in range(self.n_kernels):
+            out[i] = self.kernel(t, tau=tau[i], kappa=kappa[i])
+        return out
 
-    def integrate_all(self, t, tau=None, kappa=None, *args, **kwargs):
-        pass
+    def integrate_each(
+            self,
+            t,
+            tau=None,
+            kappa=None,
+            *args, **kwargs):
+        out = np.zeros(self.n_kernels)
+        if np.isscalar(kappa):
+            kappa = np.ones(self.n_kernels) * kappa
+        for i in range(self.n_kernels):
+            out[i] = self.kernel.integrate(t, tau=tau[i], kappa=kappa[i])
+        return out
 
 
 # replace with a wrapper function? yes.
