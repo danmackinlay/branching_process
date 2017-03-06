@@ -1,3 +1,3 @@
 from __future__ import absolute_import
 
-from .fit import Continuous
+from .fit import ContinuousExact

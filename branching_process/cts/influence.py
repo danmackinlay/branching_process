@@ -1,12 +1,13 @@
+have_autograd = False
+
 try:
     import autograd
-    import autograd.numpy as np
-    from autograd.numpy import sqrt, pi
     have_autograd = True
+    import autograd.numpy as np
+    import autograd.scipy as sp
 except ImportError as e:
     import numpy as np
-    have_autograd = False
-    from np import sqrt, pi
+    import scipy as sp
 
 
 class InfluenceKernel(object):
@@ -28,7 +29,7 @@ class UniModalInfluenceKernel(InfluenceKernel):
 
     def majorant(self, t, tau, *args, **kwargs):
         mode = self.mode(tau)
-        peak = self(mode)
+        peak = self(mode, tau)
         return np.choose(
             t > mode,
             [
@@ -43,19 +44,32 @@ class ExpKernel(InfluenceKernel):
         theta = 1.0 / tau
         return theta * np.exp(-t * theta) * (t >= 0)
 
+    def integrate(self, t, tau, *args, **kwargs):
+        theta = 1.0 / tau
+        return 1-np.exp(-t * theta) * (t >= 0)
+
 
 class MaxwellKernel(UniModalInfluenceKernel):
     """
+    http://mathworld.wolfram.com/MaxwellDistribution.html
     I think I could just use ``scipy.stats.maxwell``?
+    That seems not to be autograd differentiable.
     """
     def __call__(self, t, tau, *args, **kwargs):
         t2 = np.square(t)
-        return sqrt(2.0/pi) * t2 * np.exp(
+        return np.sqrt(2.0/np.pi) * t2 * np.exp(
             -t2 / (2 * tau**2)
         )/(tau**3)
 
     def mode(self, tau, *args, **kwargs):
-        return sqrt(2) * tau
+        return np.sqrt(2) * tau
+
+    def integrate(self, t, tau, *args, **kwargs):
+        return sp.special.erf(
+            t / (np.sqrt(2)*tau)
+        ) - t * np.sqrt(2.0/np.pi) / tau * np.exp(
+            -np.square(t)/(2 * np.square(tau))
+        )
 
 
 class MultiKernel(object):
@@ -64,7 +78,7 @@ class MultiKernel(object):
             n_kernels=1,
             kernel=MaxwellKernel(),
             *args, **kwargs):
-        self.kernel=kernel
+        self.kernel = kernel
 
     def majorant(self, t, tau=None, kappa=None, *args, **kwargs):
         return self(t, tau=tau, kappa=kappa, *args, **kwargs)
@@ -76,11 +90,11 @@ class MultiKernel(object):
         pass
 
     def majorant_all(self, t, tau=None, kappa=None, *args, **kwargs):
-        out = np.zeros(n_kernels)
+        out = np.zeros(self.n_kernels)
         if np.isscalar(kappa):
             kappa = np.ones(self.n_kernels) * kappa
-        for i in range(n_kernels):
-            out[i] = kernel(t, tau=tau[i], kappa=kap
+        for i in range(self.n_kernels):
+            out[i] = self.kernel(t, tau=tau[i], kappa=kappa)
         return out
 
     def call_all(self, t, tau=None, kappa=None, *args, **kwargs):
@@ -100,18 +114,19 @@ class FixedKernel(InfluenceKernel):
             ):
         self.tau = tau
         self.kappa = kappa
+        self.kernel = kernel
 
     def majorant(self, t, *args, **kwargs):
-        return kernel.majorant(
+        return self.kernel.majorant(
             t, tau=self.tau, kappa=self.kappa,
             *args, **kwargs)
 
     def __call__(self, t, *args, **kwargs):
-        return kernel(
+        return self.kernel(
             t, tau=self.tau, kappa=self.kappa,
             *args, **kwargs)
 
     def integrate(self, t, *args, **kwargs):
-        return kernel.integrate(
+        return self.kernel.integrate(
             t, tau=self.tau, kappa=self.kappa,
             *args, **kwargs)
