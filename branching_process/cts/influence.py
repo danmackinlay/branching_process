@@ -17,16 +17,22 @@ class InfluenceKernel(object):
         super(InfluenceKernel, self).__init__(*args)
 
     def majorant(self, t, *args, **kwargs):
-        return getattr(
-            self, '_majorant', self._call
-        )(t, *args, **kwargs, **self._fixed_args)
+        return np.squeeze(
+            getattr(
+                self, '_majorant', self._call
+            )(t, *args, **kwargs, **self._fixed_args)
+        )
 
     def __call__(self, t, *args, **kwargs):
-        return self._call(t, *args, **kwargs, **self._fixed_args)
+        return np.squeeze(
+            self._call(t, *args, **kwargs, **self._fixed_args)
+        )
 
     def integrate(self, t, *args, **kwargs):
         # some kind of numerical quadrature fallback?
-        return self._integrate(t, *args, **kwargs, **self._fixed_args)
+        return np.squeeze(
+            self._integrate(t, *args, **kwargs, **self._fixed_args)
+        )
 
 
 class UniModalInfluenceKernel(InfluenceKernel):
@@ -51,10 +57,14 @@ class UniModalInfluenceKernel(InfluenceKernel):
 
 class ExpKernel(InfluenceKernel):
     def _call(self, t, tau, *args, **kwargs):
+        t = np.asarray(t).reshape(1, -1)
+        tau = np.asarray(tau).reshape(-1, 1)
         theta = 1.0 / tau
         return theta * np.exp(-t * theta) * (t >= 0)
 
     def _integrate(self, t, tau, *args, **kwargs):
+        t = np.asarray(t).reshape(1, -1)
+        tau = np.asarray(tau).reshape(-1, 1)
         theta = 1.0 / tau
         return 1 - np.exp(-t * theta) * (t >= 0)
 
@@ -66,15 +76,20 @@ class MaxwellKernel(UniModalInfluenceKernel):
     That seems not to be autograd differentiable.
     """
     def _call(self, t, tau, *args, **kwargs):
+        t = np.asarray(t).reshape(1, -1)
+        tau = np.asarray(tau).reshape(-1, 1)
         t2 = np.square(t)
         return np.sqrt(2.0/np.pi) * t2 * np.exp(
             -t2 / (2 * tau**2)
         )/(tau**3)
 
     def _mode(self, tau, *args, **kwargs):
+        tau = np.asarray(tau).reshape(-1, 1)
         return np.sqrt(2) * tau
 
     def _integrate(self, t, tau, *args, **kwargs):
+        t = np.asarray(t).reshape(1, -1)
+        tau = np.asarray(tau).reshape(-1, 1)
         return sp.special.erf(
             t / (np.sqrt(2)*tau)
         ) - t * np.sqrt(2.0/np.pi) / tau * np.exp(
@@ -91,53 +106,39 @@ class MultiKernel(InfluenceKernel):
         self.kernel = kernel
         super(MultiKernel, self).__init__(*args, **fixed_args)
 
-    def _fixed_args_each(self):
-        for i in range(self.n_kernels):
-            yield dict([
-                (key, val[i])
-                for key, val
-                in self._fixed_args.iteritems()
-            ])
-
     def majorant(
             self,
             t,
-            tau=None,
-            kappa=None,
             *args, **kwargs):
-
         return np.sum(
-            self.majorant_each(t, tau=tau, kappa=kappa, *args, **kwargs)
+            self.majorant_each(t, *args, **kwargs),
+            0
         )
 
     def __call__(
             self,
             t,
-            tau=None,
-            kappa=None,
             *args, **kwargs):
-        pass
+        return np.sum(
+            self.call_each(t, *args, **kwargs),
+            0
+        )
 
     def integrate(
             self,
             t,
-            tau=None,
-            kappa=None,
             *args, **kwargs):
-        pass
+        return np.sum(
+            self.integrate_each(t, *args, **kwargs),
+            0
+        )
 
     def majorant_each(
             self,
             t,
-            tau=None,
-            kappa=None,
             *args, **kwargs):
-        out = np.zeros(self.n_kernels)
-        if np.isscalar(kappa):
-            kappa = np.ones(self.n_kernels) * kappa
-        for i in range(self.n_kernels):
-            out[i] = self.kernel.majorant(t, tau=tau[i], kappa=kappa[i])
-        return out
+        return self._majorant(
+            t, *args, **kwargs)
 
     def call_each(
             self,
@@ -145,12 +146,8 @@ class MultiKernel(InfluenceKernel):
             tau=None,
             kappa=None,
             *args, **kwargs):
-        out = np.zeros(self.n_kernels)
-        if np.isscalar(kappa):
-            kappa = np.ones(self.n_kernels) * kappa
-        for i in range(self.n_kernels):
-            out[i] = self.kernel(t, tau=tau[i], kappa=kappa[i])
-        return out
+        return self._call(
+            t, *args, **kwargs)
 
     def integrate_each(
             self,
@@ -158,12 +155,8 @@ class MultiKernel(InfluenceKernel):
             tau=None,
             kappa=None,
             *args, **kwargs):
-        out = np.zeros(self.n_kernels)
-        if np.isscalar(kappa):
-            kappa = np.ones(self.n_kernels) * kappa
-        for i in range(self.n_kernels):
-            out[i] = self.kernel.integrate(t, tau=tau[i], kappa=kappa[i])
-        return out
+        return self._integrate(
+            t, *args, **kwargs)
 
 
 class GenericKernel(InfluenceKernel):
