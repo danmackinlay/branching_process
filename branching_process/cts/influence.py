@@ -144,29 +144,30 @@ class MultiKernel(object):
         return out
 
 
-# replace with a wrapper function? yes.
 class FixedKernel(InfluenceKernel):
+    """
+    if you want some arguments to be fixed, this wrapper will do it.
+    """
     def __init__(
             self,
             kernel,
-            tau=1.0,
-            kappa=1.0,
+            *args,
+            **fixed_args
             ):
-        self.tau = tau
-        self.kappa = kappa
         self.kernel = kernel
+        self.fixed_args = fixed_args
 
     def majorant(self, t, *args, **kwargs):
         return self.kernel.majorant(
-            t, tau=self.tau, kappa=self.kappa,
-            *args, **kwargs)
+            t,
+            *args, **kwargs, **self.fixed_args)
 
     def __call__(self, t, *args, **kwargs):
         return self.kernel(
-            t, tau=self.tau, kappa=self.kappa,
-            *args, **kwargs)
+            t,
+            *args, **kwargs, **self.fixed_args)
 
     def integrate(self, t, *args, **kwargs):
         return self.kernel.integrate(
-            t, tau=self.tau, kappa=self.kappa,
-            *args, **kwargs)
+            t,
+            *args, **kwargs, **self.fixed_args)
