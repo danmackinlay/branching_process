@@ -4,7 +4,7 @@ except ImportError:
     from distutils.core import setup
 
 long_description = """
-hawkes_process
+branching_process
 """
 
 config = dict(
@@ -21,12 +21,12 @@ config = dict(
         'seaborn',
         'pandas',
     ],
-    packages=['hawkes_process'],
+    packages=['branching_process'],
     scripts=[],
-    name='hawkes_process',
+    name='branching_process',
     # # see https://python-packaging.readthedocs.io/en/latest/non-code-files.html
     # package_data=dict(
-    #     hawkes_process= ['datasets'],
+    #     branching_process= ['datasets'],
     # ),
     # include_package_data=True
 )
