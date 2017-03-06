@@ -1,0 +1,261 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.1' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      7660,        252]
+NotebookOptionsPosition[      6841,        219]
+NotebookOutlinePosition[      7175,        234]
+CellTagsIndexPosition[      7132,        231]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell["\<\
+We devise Ogata-style nonparametric kernels
+\
+\>", "Input",
+ CellChangeTimes->{{3.674444702999682*^9, 3.674444743201763*^9}, 
+   3.6761646308675947`*^9, 3.677377483391267*^9},
+ FormatType->"TextForm"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Mean", "[", 
+  RowBox[{"GeometricDistribution", "[", "p", "]"}], " ", "]"}]], "Input",
+ CellChangeTimes->{{3.674444737197958*^9, 3.674444760170183*^9}, {
+  3.674444796362503*^9, 3.6744448679175043`*^9}, {3.674444927347453*^9, 
+  3.6744450495211153`*^9}, {3.676164646821169*^9, 3.676164650958501*^9}, {
+  3.676164708273292*^9, 3.676164801120016*^9}, {3.676164944610016*^9, 
+  3.676164947274818*^9}, {3.676165079896764*^9, 3.676165080088448*^9}, {
+  3.6761651324921417`*^9, 3.67616514222358*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"-", "1"}], "+", 
+  FractionBox["1", "p"]}]], "Output",
+ CellChangeTimes->{{3.6744448434883137`*^9, 3.6744448685914917`*^9}, {
+   3.674445026335198*^9, 3.6744450506165867`*^9}, {3.6761647367523193`*^9, 
+   3.676164804083499*^9}, 3.676165080974167*^9, {3.676165135991892*^9, 
+   3.6761651426193523`*^9}}]
+}, Open  ]],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.674445406090753*^9, 3.674445477401169*^9}, 
+   3.676164681764526*^9}],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{3.6773775829495792`*^9}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"ctslagkern", "[", 
+   RowBox[{"t_", ",", "k_", ",", "c_"}], "]"}], ":=", 
+  RowBox[{
+   RowBox[{"t", "^", "k"}], "*", 
+   RowBox[{
+    RowBox[{"Exp", "[", 
+     RowBox[{
+      RowBox[{"-", "c"}], "*", "t"}], "]"}], "/", 
+    RowBox[{"(", 
+     RowBox[{
+      SuperscriptBox["c", 
+       RowBox[{
+        RowBox[{"-", "1"}], "-", "k"}]], " ", 
+      RowBox[{"Gamma", "[", 
+       RowBox[{"1", "+", "k"}], "]"}]}], ")"}]}]}]}]], "Input",
+ CellChangeTimes->{{3.677377558755539*^9, 3.677377572971512*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Integrate", "[", 
+  RowBox[{
+   RowBox[{"ctslagkern", "[", 
+    RowBox[{"t", ",", "k", ",", "c"}], "]"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"t", ",", "n", ",", 
+     RowBox[{"n", "+", "1"}]}], "}"}], ",", 
+   RowBox[{"Assumptions", "->", 
+    RowBox[{
+     RowBox[{"c", ">", "0"}], "&&", 
+     RowBox[{"k", "\[Element]", "Integers"}], "&&", 
+     RowBox[{"k", ">=", "0"}], "&&", 
+     RowBox[{"n", "\[Element]", "Integers"}], "&&", 
+     RowBox[{"n", "\[GreaterEqual]", "0"}]}]}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.6773797172991467`*^9, 3.677379775609631*^9}}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   RowBox[{"Gamma", "[", 
+    RowBox[{
+     RowBox[{"1", "+", "k"}], ",", 
+     RowBox[{"c", " ", "n"}]}], "]"}], "-", 
+   RowBox[{"Gamma", "[", 
+    RowBox[{
+     RowBox[{"1", "+", "k"}], ",", 
+     RowBox[{"c", " ", 
+      RowBox[{"(", 
+       RowBox[{"1", "+", "n"}], ")"}]}]}], "]"}]}], 
+  RowBox[{"Gamma", "[", 
+   RowBox[{"1", "+", "k"}], "]"}]]], "Output",
+ CellChangeTimes->{3.677379778683996*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"PDF", "[", 
+  RowBox[{
+   RowBox[{"PoissonDistribution", "[", "\[Tau]", "]"}], ",", "t"}], 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.677379832117285*^9, 3.6773798599096413`*^9}, {
+  3.6773800365243673`*^9, 3.677380036763805*^9}, {3.677380073358324*^9, 
+  3.677380076286504*^9}}],
+
+Cell[BoxData[
+ TagBox[GridBox[{
+    {"\[Piecewise]", GridBox[{
+       {
+        FractionBox[
+         RowBox[{
+          SuperscriptBox["\[ExponentialE]", 
+           RowBox[{"-", "\[Tau]"}]], " ", 
+          SuperscriptBox["\[Tau]", "t"]}], 
+         RowBox[{"t", "!"}]], 
+        RowBox[{"t", "\[GreaterEqual]", "0"}]},
+       {"0", 
+        TagBox["True",
+         "PiecewiseDefault",
+         AutoDelete->True]}
+      },
+      AllowedDimensions->{2, Automatic},
+      Editable->True,
+      GridBoxAlignment->{
+       "Columns" -> {{Left}}, "ColumnsIndexed" -> {}, "Rows" -> {{Baseline}}, 
+        "RowsIndexed" -> {}},
+      GridBoxItemSize->{
+       "Columns" -> {{Automatic}}, "ColumnsIndexed" -> {}, "Rows" -> {{1.}}, 
+        "RowsIndexed" -> {}},
+      GridBoxSpacings->{"Columns" -> {
+          Offset[0.27999999999999997`], {
+           Offset[0.84]}, 
+          Offset[0.27999999999999997`]}, "ColumnsIndexed" -> {}, "Rows" -> {
+          Offset[0.2], {
+           Offset[0.4]}, 
+          Offset[0.2]}, "RowsIndexed" -> {}},
+      Selectable->True]}
+   },
+   GridBoxAlignment->{
+    "Columns" -> {{Left}}, "ColumnsIndexed" -> {}, "Rows" -> {{Baseline}}, 
+     "RowsIndexed" -> {}},
+   GridBoxItemSize->{
+    "Columns" -> {{Automatic}}, "ColumnsIndexed" -> {}, "Rows" -> {{1.}}, 
+     "RowsIndexed" -> {}},
+   GridBoxSpacings->{"Columns" -> {
+       Offset[0.27999999999999997`], {
+        Offset[0.35]}, 
+       Offset[0.27999999999999997`]}, "ColumnsIndexed" -> {}, "Rows" -> {
+       Offset[0.2], {
+        Offset[0.4]}, 
+       Offset[0.2]}, "RowsIndexed" -> {}}],
+  "Piecewise",
+  DeleteWithContents->True,
+  Editable->False,
+  SelectWithContents->True,
+  Selectable->False]], "Output",
+ CellChangeTimes->{3.677379860633317*^9, 3.677380036925311*^9, 
+  3.6773800776613398`*^9}]
+}, Open  ]],
+
+Cell["\<\
+
+Can I take this back to cts land? Apparently not directly.\
+\>", "Input",
+ CellChangeTimes->{{3.677386478475786*^9, 3.677386498606683*^9}, {
+  3.677386854790759*^9, 3.677386857222919*^9}, {3.677386921414055*^9, 
+  3.677386929326016*^9}},
+ FormatType->"TextForm"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Integrate", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"\[Tau]", "^", "t"}], "/", 
+    RowBox[{"Gamma", "[", 
+     RowBox[{"t", "+", "1"}], "]"}]}], ",", " ", 
+   RowBox[{"{", 
+    RowBox[{"t", ",", "0", ",", "\[Infinity]"}], "}"}], ",", " ", 
+   RowBox[{"Assumptions", "\[Rule]", 
+    RowBox[{"\[Tau]", ">", "0"}]}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.677386506462174*^9, 3.677386594547336*^9}, {
+  3.677386689992496*^9, 3.67738671468248*^9}, {3.6773868058923893`*^9, 
+  3.677386832675727*^9}}],
+
+Cell[BoxData[
+ RowBox[{"Integrate", "[", 
+  RowBox[{
+   FractionBox[
+    SuperscriptBox["\[Tau]", "t"], 
+    RowBox[{"Gamma", "[", 
+     RowBox[{"1", "+", "t"}], "]"}]], ",", 
+   RowBox[{"{", 
+    RowBox[{"t", ",", "0", ",", "\[Infinity]"}], "}"}], ",", 
+   RowBox[{"Assumptions", "\[Rule]", 
+    RowBox[{"\[Tau]", ">", "0"}]}]}], "]"}]], "Output",
+ CellChangeTimes->{3.677386834443996*^9}]
+}, Open  ]]
+},
+WindowSize->{1185, 782},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"10.1 for Linux x86 (64-bit) (March 23, 2015)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 210, 6, 50, "Input"],
+Cell[CellGroupData[{
+Cell[793, 30, 518, 8, 32, "Input"],
+Cell[1314, 40, 337, 7, 51, "Output"]
+}, Open  ]],
+Cell[1666, 50, 118, 2, 32, "Input"],
+Cell[1787, 54, 70, 1, 32, "Input"],
+Cell[1860, 57, 536, 17, 41, "Input"],
+Cell[CellGroupData[{
+Cell[2421, 78, 592, 15, 32, "Input"],
+Cell[3016, 95, 444, 15, 53, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[3497, 115, 302, 7, 32, "Input"],
+Cell[3802, 124, 1794, 52, 62, "Output"]
+}, Open  ]],
+Cell[5611, 179, 273, 7, 50, "Input"],
+Cell[CellGroupData[{
+Cell[5909, 190, 523, 13, 32, "Input"],
+Cell[6435, 205, 390, 11, 87, "Output"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)

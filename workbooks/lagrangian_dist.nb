@@ -1,0 +1,260 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 9.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       157,          7]
+NotebookDataLength[      7868,        251]
+NotebookOptionsPosition[      7156,        221]
+NotebookOutlinePosition[      7490,        236]
+CellTagsIndexPosition[      7447,        233]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"GenPoissonPDF", " ", "[", 
+   RowBox[{"y_", ",", "\[Lambda]_", ",", "\[Eta]_"}], "]"}], ":=", 
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{"\[Lambda]", "*", 
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"\[Lambda]", "+", 
+        RowBox[{"\[Eta]", "*", "y"}]}], ")"}], "^", 
+      RowBox[{"(", 
+       RowBox[{"y", "-", "1"}], ")"}]}]}], ")"}], "/", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"Factorial", "[", "y", "]"}], "*", 
+     RowBox[{"Exp", "[", 
+      RowBox[{"\[Lambda]", "+", 
+       RowBox[{"y", "*", "\[Eta]"}]}], "]"}]}], ")"}]}]}]], "Input",
+ CellChangeTimes->{{3.669076097424312*^9, 3.669076098238171*^9}, {
+  3.669076138588389*^9, 3.669076219271221*^9}, {3.6690762568156652`*^9, 
+  3.6690763155115423`*^9}, {3.669076372743799*^9, 3.669076500616836*^9}, {
+  3.669076900216539*^9, 3.6690769086130867`*^9}, {3.669960263402025*^9, 
+  3.6699603105748873`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Simplify", "[", 
+  RowBox[{"Solve", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"D", "[", 
+      RowBox[{
+       RowBox[{"Log", "[", 
+        RowBox[{"GenPoissonPDF", "[", 
+         RowBox[{"y", ",", 
+          RowBox[{
+           RowBox[{"B", "*", "x"}], "+", "R"}], ",", "\[Eta]"}], "]"}], "]"}],
+        ",", "\[Beta]"}], "]"}], "==", "0"}], ",", " ", "\[Eta]"}], "]"}], 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.669078023859918*^9, 3.66907805605818*^9}, {
+  3.669081431993979*^9, 3.6690814324064817`*^9}, {3.6699602834375477`*^9, 
+  3.6699602834409113`*^9}, {3.669960531601513*^9, 3.669960531945786*^9}, {
+  3.669961019755744*^9, 3.6699610203952627`*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"{", 
+   RowBox[{"\[Eta]", "\[Rule]", 
+    FractionBox[
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"-", "R"}], "+", "y", "-", 
+        RowBox[{"x", " ", "\[Beta]"}]}], ")"}], " ", 
+      RowBox[{"(", 
+       RowBox[{"R", "+", 
+        RowBox[{"x", " ", "\[Beta]"}]}], ")"}]}], 
+     RowBox[{"y", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"-", "1"}], "+", "R", "+", 
+        RowBox[{"x", " ", "\[Beta]"}]}], ")"}]}]]}], "}"}], "}"}]], "Output",
+ CellChangeTimes->{3.669960443876947*^9, 3.669960532808947*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Log", "[", 
+  RowBox[{"GenPoissonPDF", "[", 
+   RowBox[{"y", ",", 
+    RowBox[{
+     RowBox[{"B", "*", "x"}], "+", "S"}], ",", "\[Eta]"}], "]"}], 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.669081600660453*^9, 3.669081601533682*^9}, 
+   3.669960283486823*^9, {3.6699613195595303`*^9, 3.669961323149066*^9}}],
+
+Cell[BoxData[
+ RowBox[{"Log", "[", 
+  FractionBox[
+   RowBox[{
+    SuperscriptBox["\[ExponentialE]", 
+     RowBox[{
+      RowBox[{"-", "S"}], "-", 
+      RowBox[{"B", " ", "x"}], "-", 
+      RowBox[{"y", " ", "\[Eta]"}]}]], " ", 
+    RowBox[{"(", 
+     RowBox[{"S", "+", 
+      RowBox[{"B", " ", "x"}]}], ")"}], " ", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{"S", "+", 
+       RowBox[{"B", " ", "x"}], "+", 
+       RowBox[{"y", " ", "\[Eta]"}]}], ")"}], 
+     RowBox[{
+      RowBox[{"-", "1"}], "+", "y"}]]}], 
+   RowBox[{"y", "!"}]], "]"}]], "Output",
+ CellChangeTimes->{{3.669961302593609*^9, 3.669961323953993*^9}}]
+}, Open  ]],
+
+Cell["\<\
+But this is pointless; the real log likelihood is a sum, yes?\
+\>", "Text", "Input",
+ CellChangeTimes->{{3.669960283444777*^9, 3.669960283458997*^9}, {
+  3.669960559855752*^9, 3.669960649017034*^9}},
+ EmphasizeSyntaxErrors->True,
+ FormatType->"TextForm"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Simplify", "[", 
+  RowBox[{"D", "[", 
+   RowBox[{
+    RowBox[{"Log", "[", 
+     RowBox[{"GenPoissonPDF", "[", 
+      RowBox[{"y", ",", 
+       RowBox[{
+        RowBox[{"B", "*", "x"}], "+", "S"}], ",", "\[Eta]"}], "]"}], "]"}], 
+    ",", "\[Eta]"}], "]"}], "]"}]], "Input",
+ CellChangeTimes->{{3.669078320875065*^9, 3.669078321991839*^9}, {
+   3.669078485960923*^9, 3.669078487716357*^9}, {3.6690813042721357`*^9, 
+   3.6690813089177723`*^9}, {3.669081542023756*^9, 3.669081542334057*^9}, {
+   3.66908171135023*^9, 3.6690817124968967`*^9}, 3.669960156717882*^9, {
+   3.6699602834639606`*^9, 3.669960283466063*^9}, {3.66996101722843*^9, 
+   3.669961017875079*^9}}],
+
+Cell[BoxData[
+ RowBox[{"-", 
+  FractionBox[
+   RowBox[{"y", " ", 
+    RowBox[{"(", 
+     RowBox[{"1", "+", "S", "+", 
+      RowBox[{"B", " ", "x"}], "-", "y", "+", 
+      RowBox[{"y", " ", "\[Eta]"}]}], ")"}]}], 
+   RowBox[{"S", "+", 
+    RowBox[{"B", " ", "x"}], "+", 
+    RowBox[{"y", " ", "\[Eta]"}]}]]}]], "Output",
+ CellChangeTimes->{{3.669960743363373*^9, 3.669960749641465*^9}, {
+  3.669961232461437*^9, 3.669961253641672*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Simplify", "[", 
+  RowBox[{"D", "[", 
+   RowBox[{
+    RowBox[{"Log", "[", 
+     RowBox[{"GenPoissonPDF", "[", 
+      RowBox[{"y", ",", 
+       RowBox[{
+        RowBox[{"B", "*", "x"}], "+", "S"}], ",", "\[Eta]"}], "]"}], "]"}], 
+    ",", "B"}], "]"}], "]"}]], "Input",
+ CellChangeTimes->{{3.669078521519249*^9, 3.6690785275989933`*^9}, {
+   3.6690787188655024`*^9, 3.6690787314743958`*^9}, {3.669081332752469*^9, 
+   3.669081351184976*^9}, {3.669081382295547*^9, 3.669081388313633*^9}, {
+   3.6690815448638487`*^9, 3.669081586063443*^9}, {3.669081715263906*^9, 
+   3.669081715717093*^9}, 3.669960159877684*^9, 3.669960283486339*^9, {
+   3.669961242065037*^9, 3.669961263424584*^9}}],
+
+Cell[BoxData[
+ RowBox[{"-", 
+  FractionBox[
+   RowBox[{"x", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      SuperscriptBox["S", "2"], "+", 
+      RowBox[{
+       SuperscriptBox["B", "2"], " ", 
+       SuperscriptBox["x", "2"]}], "+", 
+      RowBox[{"S", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"2", " ", "B", " ", "x"}], "+", 
+         RowBox[{"y", " ", 
+          RowBox[{"(", 
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "\[Eta]"}], ")"}]}]}], ")"}]}], "+", 
+      RowBox[{"B", " ", "x", " ", "y", " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "\[Eta]"}], ")"}]}], "-", 
+      RowBox[{"y", " ", "\[Eta]"}]}], ")"}]}], 
+   RowBox[{
+    RowBox[{"(", 
+     RowBox[{"S", "+", 
+      RowBox[{"B", " ", "x"}]}], ")"}], " ", 
+    RowBox[{"(", 
+     RowBox[{"S", "+", 
+      RowBox[{"B", " ", "x"}], "+", 
+      RowBox[{"y", " ", "\[Eta]"}]}], ")"}]}]]}]], "Output",
+ CellChangeTimes->{
+  3.66907873202457*^9, 3.669078943988791*^9, {3.66908133429346*^9, 
+   3.669081407837254*^9}, {3.6690815355983047`*^9, 3.66908158710955*^9}, {
+   3.669081716253811*^9, 3.669081733011845*^9}, 3.669960788797291*^9, {
+   3.669961243627667*^9, 3.669961263698783*^9}}]
+}, Open  ]]
+},
+WindowSize->{1181, 755},
+WindowMargins->{{2, Automatic}, {Automatic, 0}},
+FrontEndVersion->"10.1 for Linux x86 (64-bit) (March 23, 2015)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[557, 20, 908, 23, 32, "Input"],
+Cell[CellGroupData[{
+Cell[1490, 47, 683, 17, 32, "Input"],
+Cell[2176, 66, 585, 18, 51, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2798, 89, 329, 8, 32, "Input"],
+Cell[3130, 99, 630, 20, 54, "Output"]
+}, Open  ]],
+Cell[3775, 122, 264, 6, 31, "Text"],
+Cell[CellGroupData[{
+Cell[4064, 132, 687, 15, 32, "Input"],
+Cell[4754, 149, 434, 12, 52, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[5225, 166, 706, 15, 32, "Input"],
+Cell[5934, 183, 1206, 35, 58, "Output"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
