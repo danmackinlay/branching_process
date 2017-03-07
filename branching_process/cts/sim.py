@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import random
 from warnings import warn
+from .  import influence
 
 
 def sim_poisson(
@@ -184,8 +185,7 @@ def sim_branching(
     :rtype: numpy.array
     """
 
-    if phi_m is None:
-        phi_m = getattr(phi, 'majorant', phi)
+    phi = influence.as_influence_kernel(phi, majorant=phi_m)
     Tnext = np.asfarray(immigrants)
     allT = [np.array([])]
 
@@ -194,7 +194,7 @@ def sim_branching(
             lam=phi,
             eta=eta,
             immigrants=Tnext, end=end,
-            lam_m=phi_m)
+            lam_m=phi.majorant)
         # print('gen', gen, Tnext.size)
         if Tnext.size == 0:
             break

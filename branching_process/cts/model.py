@@ -40,7 +40,7 @@ def intensity_hawkes(
             **kwargs)
     deltas = eval_timestamps.reshape(1, -1) - timestamps.reshape(-1, 1)
     mask = deltas > 0.0
-    endo = phi(deltas) * mask
+    endo = phi(deltas.ravel()).reshape(deltas.shape) * mask
     lambdas = endo.sum(0) * eta + mu
     return lambdas
 

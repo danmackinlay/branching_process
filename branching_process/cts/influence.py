@@ -137,7 +137,6 @@ class MaxwellKernel(InfluenceKernel):
         t = np.asarray(t)
         mode = np.sqrt(2) * tau
         peak = self._kernel(mode, tau=tau, *args, **kwargs)
-        print('umk', mode, peak)
         return np.choose(
             t > mode,
             [
@@ -163,3 +162,18 @@ class GenericKernel(InfluenceKernel):
         self._majorant = majorant if majorant is not None else kernel
         self._integral = integral
         super(GenericKernel, self).__init__(*args, **fixed_args)
+
+
+def as_influence_kernel(
+        function,
+        majorant=None,
+        integral=None
+    ):
+    if hasattr(function, 'majorant'):
+        return function
+    else:
+        return GenericKernel(
+            kernel=function,
+            majorant=majorant,
+            integral=integral
+        )
