@@ -23,75 +23,88 @@ class InfluenceKernel(object):
             self,
             t,
             *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
         return np.sum(
-            self.majorant_each(t, *args, **new_kwargs),
-            0
+            self.majorant_each(t, *args, **kwargs),
+            1
         )
 
     def __call__(
             self,
             t,
             *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
         return np.sum(
-            self.call_each(t, *args, **new_kwargs),
-            0
+            self.call_each(t, *args, **kwargs),
+            1
         )
 
     def integrate(
             self,
             t,
             *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
         return np.sum(
-            self.integrate_each(t, *args, **new_kwargs),
-            0
+            self.integrate_each(t, *args, **kwargs),
+            1
         )
 
     def majorant_each(
             self,
             t,
-            kappa,
             *args, **kwargs):
+        t = np.asarray(t)
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        tau = np.asarray(new_kwargs.pop('tau'))
+        kappa = np.asarray(new_kwargs.pop('kappa'))
         return getattr(
             self, '_majorant', self._kernel
         )(
-            t, *args, **kwargs
+            t=t.reshape(-1, 1),
+            tau=tau.reshape(1, -1),
+            *args, **new_kwargs
         ) * kappa.reshape(1, -1)
 
     def call_each(
             self,
             t,
-            kappa,
             *args, **kwargs):
+        t = np.asarray(t)
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        tau = np.asarray(new_kwargs.pop('tau'))
+        kappa = np.asarray(new_kwargs.pop('kappa'))
+
         return self._kernel(
-            t, *args, **kwargs
+            t=t.reshape(-1, 1),
+            tau=tau.reshape(1, -1),
+            *args, **new_kwargs
         ) * kappa.reshape(1, -1)
 
     def integrate_each(
             self,
             t,
-            kappa,
             *args, **kwargs):
+        t = np.asarray(t)
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        tau = np.asarray(new_kwargs.pop('tau'))
+        kappa = np.asarray(new_kwargs.pop('kappa'))
         return self._integrate(
-            t, *args, **kwargs
+            t=t.reshape(-1, 1),
+            tau=tau.reshape(1, -1),
+            *args, **new_kwargs
         ) * kappa.reshape(1, -1)
 
 
 class ExpKernel(InfluenceKernel):
     def _kernel(self, t, tau, *args, **kwargs):
-        t = np.asarray(t).reshape(1, -1)
-        tau = np.asarray(tau).reshape(-1, 1)
+        t = np.asarray(t)
+        tau = np.asarray(tau)
         theta = 1.0 / tau
         return theta * np.exp(-t * theta) * (t >= 0)
 
     def _integrate(self, t, tau, *args, **kwargs):
-        t = np.asarray(t).reshape(1, -1)
-        tau = np.asarray(tau).reshape(-1, 1)
+        t = np.asarray(t)
+        tau = np.asarray(tau)
         theta = 1.0 / tau
         return 1 - np.exp(-t * theta) * (t >= 0)
 
@@ -103,35 +116,33 @@ class MaxwellKernel(InfluenceKernel):
     That seems not to be autograd differentiable.
     """
     def _kernel(self, t, tau, *args, **kwargs):
-        t = np.asarray(t).reshape(1, -1)
-        tau = np.asarray(tau).reshape(-1, 1)
+        t = np.asarray(t)
+        tau = np.asarray(tau)
         t2 = np.square(t)
         return np.sqrt(2.0/np.pi) * t2 * np.exp(
             -t2 / (2 * tau**2)
         )/(tau**3)
 
-    def _mode(self, tau, *args, **kwargs):
-        tau = np.asarray(tau).reshape(-1, 1)
-        return np.sqrt(2) * tau
-
     def _integrate(self, t, tau, *args, **kwargs):
-        t = np.asarray(t).reshape(1, -1)
-        tau = np.asarray(tau).reshape(-1, 1)
+        t = np.asarray(t)
+        tau = np.asarray(tau)
         return sp.special.erf(
             t / (np.sqrt(2)*tau)
         ) - t * np.sqrt(2.0/np.pi) / tau * np.exp(
             -np.square(t)/(2 * np.square(tau))
         )
 
-    def _majorant(self, t, *args, **kwargs):
-        mode = self._mode(*args, **kwargs)
-        peak = self(mode, *args, **kwargs)
+    def _majorant(self, t, tau, *args, **kwargs):
+        tau = np.asarray(tau)
+        t = np.asarray(t)
+        mode = np.sqrt(2) * tau
+        peak = self._kernel(mode, tau=tau, *args, **kwargs)
         print('umk', mode, peak)
         return np.choose(
             t > mode,
             [
                 peak,
-                self(t, *args, **kwargs)
+                self._kernel(t, tau=tau, *args, **kwargs)
             ]
         )
 
