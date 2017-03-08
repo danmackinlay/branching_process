@@ -13,10 +13,10 @@ except ImportError as e:
 class InfluenceKernel(object):
     def __init__(
             self,
-            n_kernels=1,
+            n_bases=1,
             *args, **fixed_args):
         self._fixed_args = fixed_args
-        self._fixed_args.setdefault('kappa', np.ones(n_kernels)/n_kernels)
+        self._fixed_args.setdefault('kappa', np.ones(n_bases)/n_bases)
         super(InfluenceKernel, self).__init__(*args)
 
     def majorant(
@@ -144,6 +144,71 @@ class MaxwellKernel(InfluenceKernel):
                 self._kernel(t, tau=tau, *args, **kwargs)
             ]
         )
+
+
+class StepKernel(InfluenceKernel):
+    """
+    Piecewise-constant rate.
+    This is presumed to be for background rate modelling.
+    """
+    def __init__(
+            self,
+            end,
+            n_bases=100,
+            *args,
+            **fixed_args
+            ):
+        self.end = end
+        super(StepKernel, self).__init__(n_bases=n_bases, *args, **fixed_args)
+        self._fixed_args.setdefault(
+            'tau',
+            np.linspace(0, end, n_bases+1, endpoint=True)
+        )
+
+    def __call__(self, t, *args, **kwargs):
+        """
+        because we need n_bases+1 tau points for this, it doesn't map onto
+        the easy structure of the others.
+        I'm not convinced this subclassing rigmarole is worth the effort.
+        """
+        t = np.asarray(t)
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        tau = np.asarray(new_kwargs.pop('tau'))
+        mu = new_kwargs.pop('mu', 0.0)
+        kappa = np.asarray(new_kwargs.pop('kappa'))
+        kappa = np.maximum(kappa, -mu)
+        t = t.reshape(-1, 1)
+        each = (
+            (t > tau[:-1].reshape(1, -1)) -
+            (t > tau[1:].reshape(1, -1))
+        )
+        return np.sum(
+            each * kappa.reshape(1, -1),
+            1
+        ) + mu
+
+    def integrate(self, t, *args, **kwargs):
+        t = np.asarray(t)
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        tau = np.asarray(new_kwargs.pop('tau'))
+        mu = new_kwargs.pop('mu', 0.0)
+        kappa = np.asarray(new_kwargs.pop('kappa'))
+        kappa = np.maximum(kappa, -mu)
+        t = t.reshape(-1, 1)
+        delta = np.diff(tau)
+        each = np.maximum(
+            0, (t - tau[:-1].reshape(1, -1))
+        )
+        each = np.minimum(
+            each,
+            delta.reshape(1, -1)
+        )
+        return np.sum(
+            each * kappa.reshape(1, -1),
+            1
+        ) + (mu * t.ravel())
 
 
 class GenericKernel(InfluenceKernel):
