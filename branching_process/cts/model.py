@@ -16,6 +16,7 @@ except ImportError as e:
     import scipy as sp
     have_autograd = False
 
+from . import influence
 
 def intensity_hawkes(
         timestamps,
@@ -77,15 +78,17 @@ def _intensity_hawkes_lite(
 class ContinuousExact(object):
     def __init__(
             self,
-            phis,
+            phi=None,
             fit_tau=False
             ):
-        if hasattr(phis, 'integrate'):
-            # assume a single kernel, instead of an array
-            phis = [phis]
-        self.phis = phis
-        self.n_bases = len(phis)
+        if phi is None:
+            phi = influence.MaxwellKernel(n_bases=5)
+        else:
+            phi = influence.as_influence_kernel(phi)
+        self.phi = phi
+        self.n_bases = phi.n_bases
         self.fit_tau = fit_tau
+        # we always fit kappa
 
     def _pack(
             self,
@@ -134,6 +137,7 @@ class ContinuousExact(object):
             taus=0.0,
             log_omegas=0.0,
             ):
+        
         endo_rate = np.dot(np.reshape(kappas, (1, -1)), X)
         lamb = endo_rate + mu * np.exp(log_omega)
         partial_loglik = loglik_poisson(lamb, y)
@@ -172,7 +176,8 @@ class ContinuousExact(object):
             # pi_omega=0.0,
             ):
         """
-        approximate self._dof_packed differentiably, using gradient information.
+        approximate self._dof_packed differentiably,
+        using gradient information.
         """
         raise NotImplementedError()
 
@@ -227,11 +232,11 @@ class ContinuousExact(object):
             t0=0.0,
             t1=None,
             pi_kappa=0.0,
-            # pi_omega=1e-8,
-            # max_steps=None,
-            # step_iter=50,
-            # step_size=0.1,
-            # gamma=0.9,
+            pi_omega=1e-8,
+            max_steps=None,
+            step_iter=50,
+            step_size=0.1,
+            gamma=0.9,
             eps=1e-8,
             # backoff=0.75
             ):
@@ -239,7 +244,13 @@ class ContinuousExact(object):
             param_vector = self._pack()
 
         self.t0 = t0
-        self.t1 = t1 or np.maximum(ts)
+        self.t1 = t1 or ts[-1]
+
+        # Full likelihood is best evaluated at the end also
+        if ts[-1] < self.t1:
+            evalpts = np.append(ts[ts>t0], [self.t1])
+        else:
+            evalpts = ts[np.logical_and(ts >= t0, ts < t1)]
 
         # Scale factors by the mean only, since they are assumed to be positive
         X_scale = X.mean(axis=1)
@@ -271,9 +282,6 @@ class ContinuousExact(object):
         dof_path = np.zeros(max_steps)
         aic_path = np.zeros(max_steps)
 
-        # Now, an idiotic gradient descent algorithm
-        # Seeding by iteratively-reweighted least squares
-        # or just least squares would be better
         grad_negloglik = grad(self._negloglik_packed, 0)
         grad_penalty = grad(self._penalty_packed, 0)
         grad_objective = grad(self._objective_packed, 0)
@@ -351,8 +359,8 @@ class ContinuousExact(object):
             )
             if (
                 np.random.random() < (
-                    sqrt(log_omega_grad.size) /
-                    (sqrt(kappa_grad.size) + sqrt(log_omega_grad.size))
+                    np.sqrt(log_omega_grad.size) /
+                    (np.sqrt(kappa_grad.size) + np.sqrt(log_omega_grad.size))
                     )):
                 print('log_omega_grad', log_omega_grad)
                 pi_omega += max(
