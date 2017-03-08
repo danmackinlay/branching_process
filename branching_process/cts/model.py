@@ -32,14 +32,14 @@ def intensity_hawkes(
     True intensity of Hawkes process.
     Memory-hungry per default; could be improved, with numba.
     """
-    timestamps = np.asarray(timestamps).ravel()
+    timestamps = np.asfarray(timestamps).ravel()
     if sort:
         timestamps = np.sort(timestamps)
     if eval_timestamps is None:
         eval_timestamps = timestamps
         if sort:
             eval_timestamps = np.sort(eval_timestamps)
-    eval_timestamps = np.asarray(eval_timestamps).ravel()
+    eval_timestamps = np.asfarray(eval_timestamps).ravel()
     if ((timestamps.size) * (eval_timestamps.size)) > max_floats:
         return _intensity_hawkes_lite(
             timestamps=timestamps,
@@ -100,12 +100,12 @@ class ContinuousExact(object):
             ):
 
         n_tau = self.n_phi_bases * self._fit_tau
-        n_omegas = self.n_omega_bases * self._fit_omega
+        n_omega = self.n_omega_bases * self._fit_omega
         packed = np.zeros(
             1 +
             self.n_phi_bases +
             n_tau +
-            n_omegas
+            n_omega
         )
         packed[0] = mu
         packed[1:self.n_phi_bases + 1] = kappa
@@ -120,12 +120,20 @@ class ContinuousExact(object):
         returns mu, kappa, tau, #log_omega
         """
         n_tau = self.n_phi_bases * self._fit_tau
-        return (
-            packed[0],
-            packed[1:self.n_phi_bases+1],
-            packed[self.n_phi_bases + 1:self.n_phi_bases + n_tau + 1],
-            packed[self.n_phi_bases + n_tau + 1:]
-        )
+        n_omega = self.n_omega_bases * self._fit_omega
+        unpacked = {
+            'mu': packed[0],
+            'kappa': packed[1:self.n_phi_bases+1],
+        }
+        if n_tau > 0:
+            unpacked['tau'] = packed[
+                self.n_phi_bases + 1:self.n_phi_bases + n_tau + 1
+            ]
+        if n_omega > 0:
+            unpacked['omega'] = packed[
+                self.n_phi_bases + n_tau + 1:
+            ]
+        return unpacked
 
     def _negloglik_packed(
             self,
@@ -134,7 +142,7 @@ class ContinuousExact(object):
             self._ts,
             self._evalpts,
             self.phi,
-            *self._unpack(param_vector))
+            **self._unpack(param_vector))
 
     def negloglik(
             self,
@@ -143,15 +151,16 @@ class ContinuousExact(object):
             phi=None,
             mu=1.0,
             kappa=None,
-            tau=[],
             log_omega=[],
-            ):
+            **kwargs):
         if phi is None:
             phi = self.phi
-        if kappa is None:
-            kappa = np.ones(phi.n_omega_bases) / phi.n_omega_bases
-        lam = phi(ts, tau=tau, kappa=kappa) + mu
-        big_lam = phi.integral(self._t_end) - phi.integral(self._t_start)
+        lam = phi(ts, kappa=kappa, **kwargs) + mu
+        big_lam = phi.integrate(
+            self._t_end, kappa=kappa, **kwargs
+            ) - phi.integrate(
+            self._t_start, kappa=kappa, **kwargs
+        )
         negloglik = big_lam - np.sum(np.log(lam))
         return negloglik
 
@@ -163,8 +172,8 @@ class ContinuousExact(object):
         return self._pack(
             mu=0.0,
             kappa=pi_kappa,
-            # log_omega=pi_omega
-        ) / self.penalty_scale
+            log_omega=pi_omega
+        )  # / self.penalty_scale
 
     def _penalty_packed(
             self,

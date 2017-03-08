@@ -51,11 +51,11 @@ class InfluenceKernel(object):
             self,
             t,
             *args, **kwargs):
-        t = np.asarray(t)
+        t = np.asfarray(t)
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = np.asarray(new_kwargs.pop('tau'))
-        kappa = np.asarray(new_kwargs.pop('kappa'))
+        tau = np.asfarray(new_kwargs.pop('tau'))
+        kappa = np.asfarray(new_kwargs.pop('kappa'))
         return getattr(
             self, '_majorant', self._kernel
         )(
@@ -68,11 +68,11 @@ class InfluenceKernel(object):
             self,
             t,
             *args, **kwargs):
-        t = np.asarray(t)
+        t = np.asfarray(t)
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = np.asarray(new_kwargs.pop('tau'))
-        kappa = np.asarray(new_kwargs.pop('kappa'))
+        tau = np.asfarray(new_kwargs.pop('tau'))
+        kappa = np.asfarray(new_kwargs.pop('kappa'))
 
         return self._kernel(
             t=t.reshape(-1, 1),
@@ -84,11 +84,11 @@ class InfluenceKernel(object):
             self,
             t,
             *args, **kwargs):
-        t = np.asarray(t)
+        t = np.asfarray(t)
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = np.asarray(new_kwargs.pop('tau'))
-        kappa = np.asarray(new_kwargs.pop('kappa'))
+        tau = np.asfarray(new_kwargs.pop('tau'))
+        kappa = np.asfarray(new_kwargs.pop('kappa'))
         return self._integrate(
             t=t.reshape(-1, 1),
             tau=tau.reshape(1, -1),
@@ -98,14 +98,14 @@ class InfluenceKernel(object):
 
 class ExpKernel(InfluenceKernel):
     def _kernel(self, t, tau, *args, **kwargs):
-        t = np.asarray(t)
-        tau = np.asarray(tau)
+        t = np.asfarray(t)
+        tau = np.asfarray(tau)
         theta = 1.0 / tau
         return theta * np.exp(-t * theta) * (t >= 0)
 
     def _integrate(self, t, tau, *args, **kwargs):
-        t = np.asarray(t)
-        tau = np.asarray(tau)
+        t = np.asfarray(t)
+        tau = np.asfarray(tau)
         theta = 1.0 / tau
         return 1 - np.exp(-t * theta) * (t >= 0)
 
@@ -117,16 +117,16 @@ class MaxwellKernel(InfluenceKernel):
     That seems not to be autograd differentiable.
     """
     def _kernel(self, t, tau, *args, **kwargs):
-        t = np.asarray(t)
-        tau = np.asarray(tau)
+        t = np.asfarray(t)
+        tau = np.asfarray(tau)
         t2 = np.square(t)
         return np.sqrt(2.0/np.pi) * t2 * np.exp(
             -t2 / (2 * tau**2)
         )/(tau**3)
 
     def _integrate(self, t, tau, *args, **kwargs):
-        t = np.asarray(t)
-        tau = np.asarray(tau)
+        t = np.asfarray(t)
+        tau = np.asfarray(tau)
         return sp.special.erf(
             t / (np.sqrt(2)*tau)
         ) - t * np.sqrt(2.0/np.pi) / tau * np.exp(
@@ -134,8 +134,8 @@ class MaxwellKernel(InfluenceKernel):
         )
 
     def _majorant(self, t, tau, *args, **kwargs):
-        tau = np.asarray(tau)
-        t = np.asarray(t)
+        tau = np.asfarray(tau)
+        t = np.asfarray(t)
         mode = np.sqrt(2) * tau
         peak = self._kernel(mode, tau=tau, *args, **kwargs)
         return np.choose(
@@ -172,12 +172,12 @@ class StepLinearKernel(InfluenceKernel):
         the easy structure of the others.
         I'm not convinced this subclassing rigmarole is worth the effort.
         """
-        t = np.asarray(t)
+        t = np.asfarray(t)
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = np.asarray(new_kwargs.pop('tau'))
+        tau = np.asfarray(new_kwargs.pop('tau'))
         mu = new_kwargs.pop('mu', 0.0)
-        kappa = np.asarray(new_kwargs.pop('kappa'))
+        kappa = np.asfarray(new_kwargs.pop('kappa'))
         kappa = np.maximum(kappa, -mu)
         t = t.reshape(-1, 1)
         each = (
@@ -190,12 +190,12 @@ class StepLinearKernel(InfluenceKernel):
         ) + mu
 
     def integrate(self, t, *args, **kwargs):
-        t = np.asarray(t)
+        t = np.asfarray(t)
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = np.asarray(new_kwargs.pop('tau'))
+        tau = np.asfarray(new_kwargs.pop('tau'))
         mu = new_kwargs.pop('mu', 0.0)
-        kappa = np.asarray(new_kwargs.pop('kappa'))
+        kappa = np.asfarray(new_kwargs.pop('kappa'))
         kappa = np.maximum(kappa, -mu)
         t = t.reshape(-1, 1)
         delta = np.diff(tau)
