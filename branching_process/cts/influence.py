@@ -59,10 +59,10 @@ class InfluenceKernel(object):
         return getattr(
             self, '_majorant', self._kernel
         )(
-            t=t.reshape(-1, 1),
-            tau=tau.reshape(1, -1),
+            t=np.reshape(t, (-1, 1)),
+            tau=np.reshape(tau, (1, -1)),
             *args, **new_kwargs
-        ) * kappa.reshape(1, -1)
+        ) * np.reshape(kappa, (1, -1))
 
     def call_each(
             self,
@@ -75,10 +75,10 @@ class InfluenceKernel(object):
         kappa = np.asfarray(new_kwargs.pop('kappa'))
 
         return self._kernel(
-            t=t.reshape(-1, 1),
-            tau=tau.reshape(1, -1),
+            t=np.reshape(t, (-1, 1)),
+            tau=np.reshape(tau, (1, -1)),
             *args, **new_kwargs
-        ) * kappa.reshape(1, -1)
+        ) * np.reshape(kappa, (1, -1))
 
     def integrate_each(
             self,
@@ -90,10 +90,10 @@ class InfluenceKernel(object):
         tau = np.asfarray(new_kwargs.pop('tau'))
         kappa = np.asfarray(new_kwargs.pop('kappa'))
         return self._integrate(
-            t=t.reshape(-1, 1),
-            tau=tau.reshape(1, -1),
+            t=np.reshape(t, (-1, 1)),
+            tau=np.reshape(tau, (1, -1)),
             *args, **new_kwargs
-        ) * kappa.reshape(1, -1)
+        ) * np.reshape(kappa, (1, -1))
 
 
 class ExpKernel(InfluenceKernel):
@@ -179,13 +179,13 @@ class StepLinearKernel(InfluenceKernel):
         mu = new_kwargs.pop('mu', 0.0)
         kappa = np.asfarray(new_kwargs.pop('kappa'))
         kappa = np.maximum(kappa, -mu)
-        t = t.reshape(-1, 1)
+        t = np.reshape(t, (-1, 1))
         each = (
             (t > tau[:-1].reshape(1, -1)) -
             (t > tau[1:].reshape(1, -1))
         )
         return np.sum(
-            each * kappa.reshape(1, -1),
+            each * np.reshape(kappa, (1, -1)),
             1
         ) + mu
 
@@ -197,7 +197,7 @@ class StepLinearKernel(InfluenceKernel):
         mu = new_kwargs.pop('mu', 0.0)
         kappa = np.asfarray(new_kwargs.pop('kappa'))
         kappa = np.maximum(kappa, -mu)
-        t = t.reshape(-1, 1)
+        t = np.reshape(t, (-1, 1))
         delta = np.diff(tau)
         each = np.maximum(
             0, (t - tau[:-1].reshape(1, -1))
@@ -207,7 +207,7 @@ class StepLinearKernel(InfluenceKernel):
             delta.reshape(1, -1)
         )
         return np.sum(
-            each * kappa.reshape(1, -1),
+            each * np.reshape(kappa, (1, -1)),
             1
         ) + (mu * t.ravel())
 
