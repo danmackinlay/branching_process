@@ -8,6 +8,7 @@ Poisson point process penalised likelihood regression.
 """
 
 try:
+    import autograd
     import autograd.numpy as np
     import autograd.scipy as sp
     have_autograd = True
@@ -79,16 +80,14 @@ class ContinuousExact(object):
     def __init__(
             self,
             phi=None,
-            fit_tau=False
+            n_bases=1
             ):
         if phi is None:
             phi = influence.MaxwellKernel(n_bases=5)
         else:
-            phi = influence.as_influence_kernel(phi)
+            phi = influence.as_influence_kernel(phi, n_bases=n_bases)
         self.phi = phi
         self.n_bases = phi.n_bases
-        self.fit_tau = fit_tau
-        # we always fit kappa
 
     def _pack(
             self,
@@ -98,11 +97,11 @@ class ContinuousExact(object):
             # log_omega=0.0,
             ):
 
-        n_taus = self.n_bases * self.fit_tau
+        n_taus = self.n_bases * self._fit_tau
         packed = np.zeros(
             1 +
             self.n_bases +
-            self.n_bases * self.fit_tau
+            self.n_bases * self._fit_tau
             # n_steps
         )
         packed[0] = mu
@@ -117,7 +116,7 @@ class ContinuousExact(object):
         """
         returns mu, kappas, taus, #log_omegas
         """
-        n_taus = self.n_bases * self.fit_tau
+        n_taus = self.n_bases * self._fit_tau
         return (
             packed[0],
             packed[1:self.n_bases+1],
@@ -128,16 +127,25 @@ class ContinuousExact(object):
     def _negloglik_packed(
             self,
             param_vector):
-        return self.negloglik(*self._unpack(param_vector))
+        return self.negloglik(
+            self._ts, self._evalpts, phi=self.phi,
+            *self._unpack(param_vector))
 
     def negloglik(
             self,
-            mu,
-            kappas,
+            ts,
+            phi=None,
+            evalpts=None,
+            mu=1.0,
+            kappas=None,
             taus=0.0,
             log_omegas=0.0,
             ):
-        
+        if phi is None:
+            phi = self.phi
+        if kappas is None:
+            kappas = np.ones(phi.n_bases) / phi.n_bases
+
         endo_rate = np.dot(np.reshape(kappas, (1, -1)), X)
         lamb = endo_rate + mu * np.exp(log_omega)
         partial_loglik = loglik_poisson(lamb, y)
@@ -212,8 +220,12 @@ class ContinuousExact(object):
             kappas=0.0,
             taus=0.0,
             # log_omegas=0.0,
+            fit_tau=False,
+            fit_omega=False,
             **kwargs
             ):
+        self._fit_tau = fit_tau
+        self._fit_omega = fit_omega
         return self._fit_packed(
             ts,
             self._pack(
@@ -229,8 +241,8 @@ class ContinuousExact(object):
             self,
             ts,
             param_vector=None,
-            t0=0.0,
-            t1=None,
+            t_start=0.0,
+            t_end=None,
             pi_kappa=0.0,
             pi_omega=1e-8,
             max_steps=None,
@@ -238,36 +250,37 @@ class ContinuousExact(object):
             step_size=0.1,
             gamma=0.9,
             eps=1e-8,
-            # backoff=0.75
+            backoff=0.75,
+            warm_start=False,
             ):
-        if param_vector is None:
-            param_vector = self._pack()
 
-        self.t0 = t0
-        self.t1 = t1 or ts[-1]
+        if warm_start:
+            param_vector = self._param_vector
+        else:
+            if param_vector is None:
+                param_vector = self._pack()
+        self._param_vector = param_vector
+
+        self._t_start = t_start
+        self._t_end = t_end or ts[-1]
+        self._ts = ts
 
         # Full likelihood is best evaluated at the end also
-        if ts[-1] < self.t1:
-            evalpts = np.append(ts[ts>t0], [self.t1])
+        if ts[-1] < self._t_end:
+            _evalpts = np.append(
+                ts[ts > self._t_start],
+                [self._t_end]
+            )
         else:
-            evalpts = ts[np.logical_and(ts >= t0, ts < t1)]
+            _evalpts = ts[
+                np.logical_and(
+                    ts >= self._t_start,
+                    ts < self._t_end
+                )
+            ]
 
-        # Scale factors by the mean only, since they are assumed to be positive
-        X_scale = X.mean(axis=1)
-        y_scale = y.mean()
+        self._evalpts = _evalpts
 
-        # optimizer scale - not quite the same as penalty scale
-        param_scale = self._pack(
-            mu=y_scale * 0.5,
-            kappas=X_scale,
-            log_omega=1.0
-        )
-        # reweight penalty according to magnitude of predictors
-        penalty_scale = self._pack(
-            mu=1.0,  # unused
-            kappas=X_scale,
-            log_omega=1.0
-        )
         param_floor = self._pack(
             mu=0.0,  # unused
             kappas=0.0,
@@ -275,18 +288,18 @@ class ContinuousExact(object):
         )
 
         n_params = param_vector.size
-        param_path = np.zeros((n_params, max_steps))
-        pi_kappa_path = np.zeros(max_steps)
-        pi_omega_path = np.zeros(max_steps)
-        loglik_path = np.zeros(max_steps)
-        dof_path = np.zeros(max_steps)
-        aic_path = np.zeros(max_steps)
+        self._param_path = param_path = np.zeros((n_params, max_steps))
+        self._pi_kappa_path = pi_kappa_path = np.zeros(max_steps)
+        self._pi_omega_path = pi_omega_path = np.zeros(max_steps)
+        self._loglik_path = loglik_path = np.zeros(max_steps)
+        self._dof_path = dof_path = np.zeros(max_steps)
+        self._aic_path = aic_path = np.zeros(max_steps)
 
-        grad_negloglik = grad(self._negloglik_packed, 0)
-        grad_penalty = grad(self._penalty_packed, 0)
-        grad_objective = grad(self._objective_packed, 0)
+        grad_negloglik = autograd.grad(self._negloglik_packed, 0)
+        grad_penalty = autograd.grad(self._penalty_packed, 0)
+        grad_objective = autograd.grad(self._objective_packed, 0)
 
-        avg_sq_grad = np.ones_like(param_vector)
+        self._avg_sq_grad = avg_sq_grad = np.ones_like(param_vector)
 
         for j in range(max_steps):
             loss = self._objective_packed(param_vector)
@@ -298,9 +311,9 @@ class ContinuousExact(object):
                 g_negloglik = grad_negloglik(param_vector)
                 g_penalty = grad_penalty(param_vector, pi_kappa, pi_omega)
                 g = g_negloglik + g_penalty
-                avg_sq_grad = avg_sq_grad * gamma + g**2 * (1 - gamma)
+                avg_sq_grad[:] = avg_sq_grad * gamma + g**2 * (1 - gamma)
 
-                velocity = g/(np.sqrt(avg_sq_grad) + eps) / sqrt(i+1.0)
+                velocity = g/(np.sqrt(avg_sq_grad) + eps) / np.sqrt(i+1.0)
                 # watch out, nans
                 velocity[np.logical_not(np.isfinite(velocity))] = 0.0
 
@@ -324,6 +337,7 @@ class ContinuousExact(object):
                     # print('good', loss, '=>', new_loss, local_step_size)
                     loss = new_loss
                     param_vector = new_param_vector
+                    self._param_vector = new_param_vector
                 else:
                     # print('bad', loss, '=>', new_loss, local_step_size)
                     local_step_size = local_step_size * backoff
@@ -349,7 +363,7 @@ class ContinuousExact(object):
             aic_path[j] = 2 * this_loglik - 2 * this_dof
 
             # regularisation parameter selection
-            # ideally should be randomly weight according
+            # ideally should be weighted according
             # to sizes of those two damn vectors
             mu_grad, kappa_grad, log_omega_grad = self._unpack(
                 np.abs(
@@ -377,4 +391,4 @@ class ContinuousExact(object):
         return self
 
     def coef_(self):
-        return self._unpack()
+        return self._unpack(self._param_vector)

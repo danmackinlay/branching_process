@@ -218,6 +218,7 @@ def sim_hawkes(
         start=0.0, end=1.0,
         phi_m=None,
         immigrants=None,
+        sort=True,
         **kwargs):
     """
     Basic Hawkes process
@@ -263,7 +264,7 @@ def sim_hawkes(
         immigrants,
         sim_poisson(mu, start, end)
     )
-    return np.append(
+    ts = np.append(
         immigrants,
         sim_branching(
             immigrants=immigrants,
@@ -274,3 +275,6 @@ def sim_hawkes(
             **kwargs
         )
     )
+    if sort:
+        ts = np.sort(ts)
+    return ts

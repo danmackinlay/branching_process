@@ -17,6 +17,7 @@ class InfluenceKernel(object):
             *args, **fixed_args):
         self._fixed_args = fixed_args
         self._fixed_args.setdefault('kappa', np.ones(n_bases)/n_bases)
+        self.n_bases = n_bases
         super(InfluenceKernel, self).__init__(*args)
 
     def majorant(
@@ -146,7 +147,7 @@ class MaxwellKernel(InfluenceKernel):
         )
 
 
-class StepKernel(InfluenceKernel):
+class StepLinearKernel(InfluenceKernel):
     """
     Piecewise-constant rate.
     This is presumed to be for background rate modelling.
@@ -159,7 +160,7 @@ class StepKernel(InfluenceKernel):
             **fixed_args
             ):
         self.end = end
-        super(StepKernel, self).__init__(n_bases=n_bases, *args, **fixed_args)
+        super(StepLinearKernel, self).__init__(n_bases=n_bases, *args, **fixed_args)
         self._fixed_args.setdefault(
             'tau',
             np.linspace(0, end, n_bases+1, endpoint=True)
@@ -232,13 +233,15 @@ class GenericKernel(InfluenceKernel):
 def as_influence_kernel(
         function,
         majorant=None,
-        integral=None
-    ):
+        integral=None,
+        n_bases=1
+        ):
     if hasattr(function, 'majorant'):
         return function
     else:
         return GenericKernel(
             kernel=function,
             majorant=majorant,
-            integral=integral
+            integral=integral,
+            n_bases=n_bases
         )
