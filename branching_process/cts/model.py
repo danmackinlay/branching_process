@@ -80,48 +80,51 @@ class ContinuousExact(object):
     def __init__(
             self,
             phi=None,
-            n_bases=1
+            n_phi_bases=1,
+            n_omega_bases=0,
             ):
         if phi is None:
             phi = influence.MaxwellKernel(n_bases=5)
         else:
-            phi = influence.as_influence_kernel(phi, n_bases=n_bases)
+            phi = influence.as_influence_kernel(phi, n_bases=n_phi_bases)
         self.phi = phi
-        self.n_bases = phi.n_bases
+        self.n_phi_bases = phi.n_bases
+        self.n_omega_bases = n_omega_bases
 
     def _pack(
             self,
             mu=1.0,
-            kappas=0.0,
-            taus=[]
-            # log_omega=0.0,
+            kappa=0.0,
+            tau=1.0,
+            log_omega=0.0,
             ):
 
-        n_taus = self.n_bases * self._fit_tau
+        n_tau = self.n_phi_bases * self._fit_tau
+        n_omegas = self.n_omega_bases * self._fit_omega
         packed = np.zeros(
             1 +
-            self.n_bases +
-            self.n_bases * self._fit_tau
-            # n_steps
+            self.n_phi_bases +
+            n_tau +
+            n_omegas
         )
         packed[0] = mu
-        packed[1:self.n_bases + 1] = kappas
-        packed[self.n_bases + 1:self.n_bases + n_taus + 1] = taus
-        # packed[self.n_bases+n_taus + 1:] = log_omega
+        packed[1:self.n_phi_bases + 1] = kappa
+        packed[self.n_phi_bases + 1:self.n_phi_bases + n_tau + 1] = tau
+        packed[self.n_phi_bases + n_tau + 1:] = log_omega
         return packed
 
     def _unpack(
             self,
             packed):
         """
-        returns mu, kappas, taus, #log_omegas
+        returns mu, kappa, tau, #log_omega
         """
-        n_taus = self.n_bases * self._fit_tau
+        n_tau = self.n_phi_bases * self._fit_tau
         return (
             packed[0],
-            packed[1:self.n_bases+1],
-            packed[self.n_bases + 1:self.n_bases + n_taus + 1],
-            # packed[self.n_bases + n_taus + 1:]
+            packed[1:self.n_phi_bases+1],
+            packed[self.n_phi_bases + 1:self.n_phi_bases + n_tau + 1],
+            packed[self.n_phi_bases + n_tau + 1:]
         )
 
     def _negloglik_packed(
@@ -137,16 +140,16 @@ class ContinuousExact(object):
             phi=None,
             evalpts=None,
             mu=1.0,
-            kappas=None,
-            taus=0.0,
-            log_omegas=0.0,
+            kappa=None,
+            tau=0.0,
+            log_omega=0.0,
             ):
         if phi is None:
             phi = self.phi
-        if kappas is None:
-            kappas = np.ones(phi.n_bases) / phi.n_bases
+        if kappa is None:
+            kappa = np.ones(phi.n_omega_bases) / phi.n_omega_bases
 
-        endo_rate = np.dot(np.reshape(kappas, (1, -1)), X)
+        endo_rate = np.dot(np.reshape(kappa, (1, -1)), X)
         lamb = endo_rate + mu * np.exp(log_omega)
         partial_loglik = loglik_poisson(lamb, y)
         return -np.sum(partial_loglik)
@@ -154,11 +157,11 @@ class ContinuousExact(object):
     def _penalty_weight_packed(
             self,
             pi_kappa=0.0,
-            # pi_omega
+            pi_omega=0.0
             ):
         return self._pack(
             mu=0.0,
-            kappas=pi_kappa,
+            kappa=pi_kappa,
             # log_omega=pi_omega
         ) / self.penalty_scale
 
@@ -166,7 +169,7 @@ class ContinuousExact(object):
             self,
             param_vector,
             pi_kappa=0.0,
-            # pi_omega=0.0
+            pi_omega=0.0
             ):
         # 2 different l_1 penalties
         return np.sum(
@@ -181,7 +184,7 @@ class ContinuousExact(object):
             self,
             param_vector,
             pi_kappa=0.0,
-            # pi_omega=0.0,
+            pi_omega=0.0,
             ):
         """
         approximate self._dof_packed differentiably,
@@ -193,7 +196,7 @@ class ContinuousExact(object):
             self,
             param_vector,
             pi_kappa=0.0,
-            # pi_omega=0.0
+            pi_omega=0.0
             ):
         """
         estimate self._dof_packed using a naive scale-unaware threshold
@@ -217,9 +220,9 @@ class ContinuousExact(object):
             self,
             ts,
             mu=0.0,
-            kappas=0.0,
-            taus=0.0,
-            # log_omegas=0.0,
+            kappa=0.0,
+            tau=0.0,
+            log_omega=0.0,
             fit_tau=False,
             fit_omega=False,
             **kwargs
@@ -230,9 +233,9 @@ class ContinuousExact(object):
             ts,
             self._pack(
                 mu=mu,
-                kappas=kappas,
-                taus=taus,
-                # log_omegas=log_omegas
+                kappa=kappa,
+                tau=tau,
+                log_omega=log_omega
             ),
             **kwargs
         )
@@ -245,7 +248,7 @@ class ContinuousExact(object):
             t_end=None,
             pi_kappa=0.0,
             pi_omega=1e-8,
-            max_steps=None,
+            max_steps=50,
             step_iter=50,
             step_size=0.1,
             gamma=0.9,
@@ -283,7 +286,7 @@ class ContinuousExact(object):
 
         param_floor = self._pack(
             mu=0.0,  # unused
-            kappas=0.0,
+            kappa=0.0,
             log_omega=-np.inf
         )
 
