@@ -143,14 +143,14 @@ class ContinuousExact(object):
             phi=None,
             mu=1.0,
             kappa=None,
-            tau=0.0,
-            log_omega=0.0,
+            tau=[],
+            log_omega=[],
             ):
         if phi is None:
             phi = self.phi
         if kappa is None:
             kappa = np.ones(phi.n_omega_bases) / phi.n_omega_bases
-        lam = phi(ts, tau=tau) + mu
+        lam = phi(ts, tau=tau, kappa=kappa) + mu
         big_lam = phi.integral(self._t_end) - phi.integral(self._t_start)
         negloglik = big_lam - np.sum(np.log(lam))
         return negloglik
