@@ -131,14 +131,16 @@ class ContinuousExact(object):
             self,
             param_vector):
         return self.negloglik(
-            self._ts, self._evalpts, phi=self.phi,
+            self._ts,
+            self._evalpts,
+            self.phi,
             *self._unpack(param_vector))
 
     def negloglik(
             self,
             ts,
-            phi=None,
             evalpts=None,
+            phi=None,
             mu=1.0,
             kappa=None,
             tau=0.0,
@@ -148,11 +150,10 @@ class ContinuousExact(object):
             phi = self.phi
         if kappa is None:
             kappa = np.ones(phi.n_omega_bases) / phi.n_omega_bases
-
-        endo_rate = np.dot(np.reshape(kappa, (1, -1)), X)
-        lamb = endo_rate + mu * np.exp(log_omega)
-        partial_loglik = loglik_poisson(lamb, y)
-        return -np.sum(partial_loglik)
+        lam = phi(ts, tau=tau) + mu
+        big_lam = phi.integral(self._t_end) - phi.integral(self._t_start)
+        negloglik = big_lam - np.sum(np.log(lam))
+        return negloglik
 
     def _penalty_weight_packed(
             self,
