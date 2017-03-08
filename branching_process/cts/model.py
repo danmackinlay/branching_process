@@ -82,6 +82,7 @@ class ContinuousExact(object):
             phi=None,
             n_phi_bases=1,
             n_omega_bases=0,
+            debug=False
             ):
         if phi is None:
             phi = influence.MaxwellKernel(n_bases=5)
@@ -90,15 +91,20 @@ class ContinuousExact(object):
         self.phi = phi
         self.n_phi_bases = phi.n_bases
         self.n_omega_bases = n_omega_bases
+        self.debug = debug
+
+    def _debug_print(self, *args, **kwargs):
+        if self.debug:
+            print(*args, **kwargs)
 
     def _pack(
             self,
             mu=1.0,
-            kappa=0.0,
+            kappa=0.1,
             tau=1.0,
             log_omega=0.0,
+            **kwargs
             ):
-
         n_tau = self.n_phi_bases * self._fit_tau
         n_omega = self.n_omega_bases * self._fit_omega
         packed = np.zeros(
@@ -137,12 +143,13 @@ class ContinuousExact(object):
 
     def _negloglik_packed(
             self,
-            param_vector):
+            param_vector, **kwargs):
         return self.negloglik(
             self._ts,
             self._evalpts,
             self.phi,
-            **self._unpack(param_vector))
+            **self._unpack(param_vector),
+            **kwargs)
 
     def negloglik(
             self,
@@ -186,7 +193,7 @@ class ContinuousExact(object):
             np.abs(param_vector) *
             self._penalty_weight_packed(
                 pi_kappa,
-                # pi_omega
+                pi_omega
             )
         )
 
@@ -229,10 +236,6 @@ class ContinuousExact(object):
     def fit(
             self,
             ts,
-            mu=0.0,
-            kappa=0.0,
-            tau=0.0,
-            log_omega=0.0,
             fit_tau=False,
             fit_omega=False,
             **kwargs
@@ -242,10 +245,7 @@ class ContinuousExact(object):
         return self._fit_packed(
             ts,
             self._pack(
-                mu=mu,
-                kappa=kappa,
-                tau=tau,
-                log_omega=log_omega
+                **kwargs
             ),
             **kwargs
         )
@@ -295,22 +295,22 @@ class ContinuousExact(object):
         self._evalpts = _evalpts
 
         param_floor = self._pack(
-            mu=0.0,  # unused
+            mu=0.0,  # unused?
             kappa=0.0,
             log_omega=-np.inf
         )
 
         n_params = param_vector.size
-        self._param_path = param_path = np.zeros((n_params, max_steps))
-        self._pi_kappa_path = pi_kappa_path = np.zeros(max_steps)
-        self._pi_omega_path = pi_omega_path = np.zeros(max_steps)
-        self._loglik_path = loglik_path = np.zeros(max_steps)
-        self._dof_path = dof_path = np.zeros(max_steps)
-        self._aic_path = aic_path = np.zeros(max_steps)
+        param_path = np.zeros((n_params, max_steps))
+        pi_kappa_path = np.zeros(max_steps)
+        pi_omega_path = np.zeros(max_steps)
+        loglik_path = np.zeros(max_steps)
+        dof_path = np.zeros(max_steps)
+        aic_path = np.zeros(max_steps)
 
         grad_negloglik = autograd.grad(self._negloglik_packed, 0)
         grad_penalty = autograd.grad(self._penalty_packed, 0)
-        grad_objective = autograd.grad(self._objective_packed, 0)
+        # grad_objective = autograd.grad(self._objective_packed, 0)
 
         self._avg_sq_grad = avg_sq_grad = np.ones_like(param_vector)
 
@@ -324,6 +324,7 @@ class ContinuousExact(object):
                 g_negloglik = grad_negloglik(param_vector)
                 g_penalty = grad_penalty(param_vector, pi_kappa, pi_omega)
                 g = g_negloglik + g_penalty
+                self._debug_print(param_vector, g)
                 avg_sq_grad[:] = avg_sq_grad * gamma + g**2 * (1 - gamma)
 
                 velocity = g/(np.sqrt(avg_sq_grad) + eps) / np.sqrt(i+1.0)
@@ -363,7 +364,7 @@ class ContinuousExact(object):
                     best_loss = loss
 
                 if local_step_size < 1e-3:
-                    print('nope', j, i, max_steps)
+                    self._debug_print('nope', j, i, max_steps)
                     break
 
             this_loglik = -self._negloglik_packed(best_param_vector)
@@ -375,33 +376,54 @@ class ContinuousExact(object):
             dof_path[j] = this_dof
             aic_path[j] = 2 * this_loglik - 2 * this_dof
 
-            # regularisation parameter selection
-            # ideally should be weighted according
-            # to sizes of those two damn vectors
-            mu_grad, kappa_grad, log_omega_grad = self._unpack(
-                np.abs(
-                    grad_objective(best_param_vector) *
-                    (best_param_vector != 0.0)
-                )
-            )
-            if (
-                np.random.random() < (
-                    np.sqrt(log_omega_grad.size) /
-                    (np.sqrt(kappa_grad.size) + np.sqrt(log_omega_grad.size))
-                    )):
-                print('log_omega_grad', log_omega_grad)
-                pi_omega += max(
-                    np.amin(log_omega_grad[log_omega_grad > 0])
-                    * j/max_steps,
-                    pi_omega * 0.1
-                )
-            else:
-                print('kappa_grad', kappa_grad)
-                pi_kappa += max(
-                    np.amin(kappa_grad[kappa_grad > 0]) * j / max_steps,
-                    pi_kappa * 0.1
-                )
-        return self
+            # # regularisation parameter selection
+            # all_grad = self._unpack(
+            #     np.abs(
+            #         grad_objective(best_param_vector) *
+            #         (best_param_vector != 0.0)
+            #     )
+            # )
+            # kappa_grad = all_grad['kappa']
+            # log_omega_grad = all_grad.get('omega', None)
+            #
+            # if (
+            #     np.random.random() < (
+            #         np.sqrt(log_omega_grad.size) /
+            #         (np.sqrt(kappa_grad.size) +
+            #         np.sqrt(log_omega_grad.size))
+            #         )):
+            #     print('log_omega_grad', log_omega_grad)
+            #     pi_omega += max(
+            #         np.amin(log_omega_grad[log_omega_grad > 0])
+            #         * j/max_steps,
+            #         pi_omega * 0.1
+            #     )
+            # else:
+            #     print('kappa_grad', kappa_grad)
+            #     pi_kappa += max(
+            #         np.amin(kappa_grad[kappa_grad > 0]) * j / max_steps,
+            #         pi_kappa * 0.1
+            #     )
+        del(self._ts)
+        del(self._evalpts)
+        return Fit(
+            param_path=param_path[:, :j],
+            pi_kappa_path=pi_kappa_path[:j],
+            pi_omega_path=pi_omega_path[:j],
+            loglik_path=loglik_path[:j],
+            dof_path=dof_path[:j],
+            aic_path=aic_path[:j],
+            unpack=lambda v: self._unpack(v),
+            param_vector=param_vector,
+            param=self._unpack(best_param_vector),
+        )
 
     def coef_(self):
         return self._unpack(self._param_vector)
+
+
+class Fit(object):
+    def __init__(self, *args, **kwargs):
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
+        self._keys = kwargs.keys()
