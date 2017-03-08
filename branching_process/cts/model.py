@@ -19,6 +19,7 @@ except ImportError as e:
 
 from . import influence
 
+
 def intensity_hawkes(
         timestamps,
         mu,
@@ -157,19 +158,31 @@ class ContinuousExact(object):
             evalpts=None,
             phi=None,
             mu=1.0,
+            start=None,
+            end=None,
             kappa=None,
             log_omega=[],
             **kwargs):
         if phi is None:
             phi = self.phi
+        if end is None:
+            end = getattr(self, '_t_end', ts[-1])
+        if start is None:
+            start = getattr(self, '_t_start', 0.0)
         lam = phi(ts, kappa=kappa, **kwargs) + mu
         big_lam = phi.integrate(
-            self._t_end, kappa=kappa, **kwargs
+            end, kappa=kappa, **kwargs
             ) - phi.integrate(
-            self._t_start, kappa=kappa, **kwargs
+            start, kappa=kappa, **kwargs
         )
         negloglik = big_lam - np.sum(np.log(lam))
         return negloglik
+
+    def loglik(
+            self,
+            *args,
+            **kwargs):
+        return -self.loglik(*args, **kwargs)
 
     def _penalty_weight_packed(
             self,
