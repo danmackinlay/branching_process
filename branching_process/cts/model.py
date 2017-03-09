@@ -161,7 +161,6 @@ def loglik(
 
     lam = lam_hawkes(
         ts=ts,
-        eval_ts=eval_ts,
         mu=mu,
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
@@ -189,17 +188,17 @@ class ContinuousExact(object):
     def __init__(
             self,
             phi_kernel=None,
-            n_phi_kernel_bases=1,
+            n_phi_bases=1,
             debug=False
             ):
         if phi_kernel is None:
             phi_kernel = influence.MaxwellKernel(n_bases=5)
         else:
             phi_kernel = influence.as_influence_kernel(
-                phi_kernel, n_bases=n_phi_kernel_bases
+                phi_kernel, n_bases=n_phi_bases
             )
         self.phi_kernel = phi_kernel
-        self.n_phi_kernel_bases = phi_kernel.n_bases
+        self.n_phi_bases = phi_kernel.n_bases
         self.debug = debug
 
     def _debug_print(self, *args, **kwargs):
@@ -209,27 +208,27 @@ class ContinuousExact(object):
     def _pack(
             self,
             mu=1.0,
-            phi_kwargs,
-            mu_kwargs,
+            phi_kwargs={},
+            mu_kwargs={},
             ):
-        n_tau = self.n_phi_kernel_bases * self._fit_tau
-        n_omega = self.n_omega_bases * self._fit_omega
+        n_tau = self.n_phi_bases * self._fit_tau
+        n_omega = self.n_mu_bases * self._fit_omega
         packed = np.zeros(
             1 +
-            self.n_phi_kernel_bases +
+            self.n_phi_bases +
             n_tau +
             n_omega
         )
         packed[0] = mu
         packed[
-            1:self.n_phi_kernel_bases + 1
+            1:self.n_phi_bases + 1
         ] = phi_kwargs.get('kappa', [])
         packed[
-            self.n_phi_kernel_bases + 1:
-            self.n_phi_kernel_bases + n_tau + 1
+            self.n_phi_bases + 1:
+            self.n_phi_bases + n_tau + 1
         ] = phi_kwargs.get('tau', [])
         packed[
-            self.n_phi_kernel_bases + n_tau + 1:
+            self.n_phi_bases + n_tau + 1:
         ] = mu_kwargs.get('kappa', [])
         return packed
 
@@ -239,10 +238,10 @@ class ContinuousExact(object):
         """
         returns mu, kappa, tau, omega in dict from array
         """
-        n_tau = self.n_phi_kernel_bases * self._fit_tau
-        n_omega = self.n_omega_bases * self._fit_omega
+        n_tau = self.n_phi_bases * self._fit_tau
+        n_omega = self.n_mu_bases * self._fit_omega
         phi_kwargs = dict(
-            kappa=packed[1:self.n_phi_kernel_bases+1]
+            kappa=packed[1:self.n_phi_bases+1]
         )
         mu_kwargs = dict()
         unpacked = dict(
@@ -253,13 +252,13 @@ class ContinuousExact(object):
         # are we fitting time parameters?
         if n_tau > 0:
             phi_kwargs['tau'] = packed[
-                self.n_phi_kernel_bases + 1:
-                self.n_phi_kernel_bases + n_tau + 1
+                self.n_phi_bases + 1:
+                self.n_phi_bases + n_tau + 1
             ]
         # omega parameters - exogenous variation
         if n_omega > 0:
             mu_kwargs['kappa'] = packed[
-                self.n_phi_kernel_bases + n_tau + 1:
+                self.n_phi_bases + n_tau + 1:
             ]
         return unpacked
 
@@ -278,9 +277,8 @@ class ContinuousExact(object):
             self,
             mu=1.0,
             eta=1.0,
-            omega=[],
-            phi_kwargs,
-            mu_kwargs,
+            phi_kwargs={},
+            mu_kwargs={},
             **kwargs):
 
         lam = lam_hawkes(
@@ -290,7 +288,6 @@ class ContinuousExact(object):
             phi_kernel=self._phi_kernel,
             mu_kernel=self.self._mu_kernel,
             eta=eta,
-            eval_ts=eval_ts,
             phi_kwargs=phi_kwargs,
             mu_kwargs=mu_kwargs,
             **kwargs
@@ -423,11 +420,11 @@ class ContinuousExact(object):
             eps=1e-8,
             backoff=0.75,
             warm_start=False,
-            n_omega_bases=0,
+            n_mu_bases=0,
             **kwargs
             ):
 
-        self.n_omega_bases = n_omega_bases
+        self.n_mu_bases = n_mu_bases
 
         if warm_start:
             param_vector = self._param_vector
@@ -440,11 +437,11 @@ class ContinuousExact(object):
         self._t_end = t_end or ts[-1]
         self._ts = ts
         if mu_kernel is None:
-            if n_omega_bases > 0:
+            if n_mu_bases > 0:
                 mu_kernel = influence.LinearStepKernel(
                     start=self._t_start,
                     end=self._t_end,
-                    n_bases=n_omega_bases)
+                    n_bases=n_mu_bases)
             else:
                 mu_kernel = influence.ConstKernel()
         self._mu_kernel = mu_kernel
@@ -466,8 +463,12 @@ class ContinuousExact(object):
 
         param_floor = self._pack(
             mu=0.0,  # unused?
-            kappa=0.0,
-            omega=-np.inf
+            mu_args=dict(
+                kappa=0.0
+            ),
+            phi_args=dict(
+                kappa=0.0
+            )
         )
 
         n_params = param_vector.size
@@ -478,7 +479,7 @@ class ContinuousExact(object):
         dof_path = np.zeros(max_steps)
         aic_path = np.zeros(max_steps)
 
-        grad__negloglik = autograd.grad(self._negloglik_packed, 0)
+        grad_negloglik = autograd.grad(self._negloglik_packed, 0)
         grad_penalty = autograd.grad(self._penalty_packed, 0)
         # grad_objective = autograd.grad(self._objective_packed, 0)
 
@@ -491,9 +492,9 @@ class ContinuousExact(object):
             best_param_vector = np.array(param_vector)
 
             for i in range(step_iter):
-                g__negloglik = grad__negloglik(param_vector)
+                g_negloglik = grad_negloglik(param_vector)
                 g_penalty = grad_penalty(param_vector, pi_kappa, pi_omega)
-                g = g__negloglik + g_penalty
+                g = g_negloglik + g_penalty
                 self._debug_print(param_vector, g)
                 avg_sq_grad[:] = avg_sq_grad * gamma + g**2 * (1 - gamma)
 
@@ -502,7 +503,7 @@ class ContinuousExact(object):
                 velocity[np.logical_not(np.isfinite(velocity))] = 0.0
 
                 penalty_dominant = np.abs(
-                    g__negloglik
+                    g_negloglik
                 ) < (
                     self._penalty_weight_packed(pi_kappa, pi_omega)
                 )
