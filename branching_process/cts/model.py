@@ -25,7 +25,6 @@ def lam_hawkes(
         mu,
         phi_kernel=0.0,
         mu_kernel=0.0,
-        eta=1.0,
         eval_ts=None,
         max_floats=1e8,
         phi_kwargs={},
@@ -51,7 +50,6 @@ def lam_hawkes(
             ts=ts,
             phi_kernel=phi_kernel,
             mu_kernel=mu_kernel,
-            eta=eta,
             eval_ts=eval_ts,
             phi_kwargs=phi_kwargs,
             mu_kwargs=mu_kwargs
@@ -65,7 +63,7 @@ def lam_hawkes(
     exo = mu_kernel(
         eval_ts, **mu_kwargs
     )
-    return endo.sum(0) * eta + exo
+    return endo.sum(0) + exo
 
 
 def _lam_hawkes_lite(
@@ -73,7 +71,6 @@ def _lam_hawkes_lite(
         eval_ts,
         mu_kernel,
         phi_kernel,
-        eta=1.0,
         t_start=0.0,
         phi_kwargs={},
         mu_kwargs={},
@@ -92,7 +89,7 @@ def _lam_hawkes_lite(
         mask[:] = deltas > 0.0
         endo[i] = np.sum(phi_kernel(deltas, **phi_kwargs) * mask)
     exo = mu_kernel(eval_ts, **mu_kwargs)
-    return endo * eta + exo
+    return endo + exo
 
 
 def big_lam_hawkes(
@@ -101,7 +98,6 @@ def big_lam_hawkes(
         mu,
         phi_kernel,
         mu_kernel=1.0,
-        eta=1.0,
         t_start=0.0,
         phi_kwargs={},
         mu_kwargs={},
@@ -129,7 +125,7 @@ def big_lam_hawkes(
         mu_kernel.integrate(eval_ts, **mu_kwargs) -
         mu_kernel.integrate(t_start, **mu_kwargs)
     )
-    return big_endo.sum(0) * eta + big_exo
+    return big_endo.sum(0) + big_exo
 
 
 def loglik(
@@ -137,7 +133,6 @@ def loglik(
         phi_kernel=None,
         mu_kernel=1.0,
         mu=1.0,
-        eta=1.0,
         t_start=0.0,
         t_end=None,
         eval_ts=None,
@@ -164,7 +159,6 @@ def loglik(
         mu=mu,
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
-        eta=eta,
         eval_ts=eval_ts,
         phi_kwargs=phi_kwargs,
         mu_kwargs=mu_kwargs
@@ -175,7 +169,6 @@ def loglik(
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
         t_start=t_start,
-        eta=eta,
         eval_ts=np.array(t_end),
         phi_kwargs=phi_kwargs,
         mu_kwargs=mu_kwargs

@@ -60,7 +60,6 @@ def sim_piecewise_poisson(
 def sim_inhom_clusters(
         lam,
         immigrants=0.0,
-        eta=1.0,
         t_end=np.inf,
         lam_m=None,
         eps=1e-10):
@@ -87,9 +86,6 @@ def sim_inhom_clusters(
     :param t_end: t_end time for each process.
       Scalar, or same dimension as t_start.
 
-    :type eta: float
-    :param eta: scale factor for the lam kernel ratio.
-
     :return: vector of simulated child event times on [T0, T1]. unsorted.
     :rtype: numpy.array
 
@@ -107,7 +103,7 @@ def sim_inhom_clusters(
 
     while T.size > 0:
         # calculate majorant from current timestep
-        rate_max = eta * lam.majorant(T-immigrants)
+        rate_max = lam.majorant(T-immigrants)
 
         # if the majorant has dropped to 0 we are done
         alive = rate_max > eps
@@ -123,7 +119,7 @@ def sim_inhom_clusters(
 
         # note that the rate we use now is *not* based on the timestep
         # used in the rate majorant but on the incremented times.
-        rate = eta * lam(T-immigrants)
+        rate = lam(T-immigrants)
         non_spurious = np.random.rand(T.size) * rate_max <= rate
         alive = (T < t_end)
         # Randomly thin out to correct for majorant and time inc
@@ -139,7 +135,6 @@ def sim_inhom_clusters(
 def sim_branching(
         immigrants,
         phi_kernel,
-        eta=1.0,
         phi_m=None,
         max_gen=150,  # That's a *lot*
         t_end=np.inf):
@@ -150,14 +145,10 @@ def sim_branching(
     :type phi_kernel: function
     :param phi_kernel: influence kernel for each event,
       a non-negative function with positive support.
-      The L_1 norm of `phi_kernel`*`eta` is the branching ratio which,
+      The L_1 norm of `phi_kernel` is the branching ratio which,
       if it is greater than 1, will cause explosions, and
       if it is less than 1 will cause cluster extinction and
       if it is equal to 1 will cause overenthusiastic physicists.
-
-    :type eta: function
-    :param eta: scale factor for the phi_kernel kernel ratio.
-      If the L_1 norm of `phi_kernel` is 1, this is the branching ratio.
 
     :type phi_m: function
     :param phi_m: a majorant; a non-increasing L-1 integrable function
@@ -188,7 +179,6 @@ def sim_branching(
     for gen in range(max_gen):
         Tnext = sim_inhom_clusters(
             lam=phi_kernel,
-            eta=eta,
             immigrants=Tnext,
             t_end=t_end,)
         # print('gen', gen, Tnext.size)
@@ -210,7 +200,6 @@ def sim_branching(
 def sim_hawkes(
         phi_kernel,
         mu=1.0,
-        eta=1.0,
         t_start=0.0, t_end=1.0,
         phi_m=None,
         immigrants=None,
@@ -228,14 +217,10 @@ def sim_hawkes(
     :type phi_kernel: function
     :param phi_kernel: influence kernel for each event,
       a non-negative function with positive support.
-      The L_1 norm of `phi_kernel`*`eta` is the branching ratio which,
+      The L_1 norm of `phi_kernel` is the branching ratio which,
       if it is greater than 1, will cause explosions, and
       if it is less than 1 will cause cluster extinction and
       if it is equal to 1 will cause excitable physicists.
-
-    :type eta: function
-    :param eta: scale factor for the phi_kernel kernel ratio.
-      If the L_1 norm of `phi_kernel` is 1, this is the branching ratio.
 
     :type t_start: float
     :param t_start: t_start simulating immigrants at this time
@@ -244,8 +229,9 @@ def sim_hawkes(
     :param t_end: ignore events after this time
 
     :type phi_m: function
-    :param phi_m: a majorant; a non-increasing L-1 integrable function which is
-      greater than or equal to the kernel. If phi_kernel is already non-increasing it
+    :param phi_m: a majorant; a non-increasing L_1 integrable function which is
+      greater than or equal to the kernel.
+      If phi_kernel is already non-increasing, it
       can be its own majorant, and this will be assumed as default.
 
     :return: vector of simulated event times on [T0, T1], unsorted.
@@ -265,7 +251,6 @@ def sim_hawkes(
         sim_branching(
             immigrants=immigrants,
             phi_kernel=phi_kernel,
-            eta=eta,
             t_end=t_end,
             phi_m=phi_m,
             **kwargs

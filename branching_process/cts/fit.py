@@ -100,7 +100,6 @@ class ContinuousExact(object):
     def _negloglik(
             self,
             mu=1.0,
-            eta=1.0,
             phi_kwargs={},
             mu_kwargs={},
             **kwargs):
@@ -111,7 +110,6 @@ class ContinuousExact(object):
             mu=mu,
             phi_kernel=self.phi_kernel,
             mu_kernel=self.mu_kernel,
-            eta=eta,
             phi_kwargs=phi_kwargs,
             mu_kwargs=mu_kwargs,
             **kwargs
