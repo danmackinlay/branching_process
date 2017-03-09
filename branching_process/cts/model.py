@@ -23,12 +23,12 @@ from . import influence
 def lam_hawkes(
         ts,
         mu,
-        phi_kernel,
+        phi_kernel=0.0,
         mu_kernel=0.0,
         eta=1.0,
         eval_ts=None,
         max_floats=1e8,
-        phi_kernel_kwargs={},
+        phi_kwargs={},
         mu_kwargs={},
         **kwargs):
     """
@@ -53,14 +53,14 @@ def lam_hawkes(
             mu_kernel=mu_kernel,
             eta=eta,
             eval_ts=eval_ts,
-            phi_kernel_kwargs=phi_kernel_kwargs,
+            phi_kwargs=phi_kwargs,
             mu_kwargs=mu_kwargs
         )
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
     endo = phi_kernel(
         deltas.ravel(),
-        **phi_kernel_kwargs
+        **phi_kwargs
     ).reshape(deltas.shape) * mask
     exo = mu_kernel(
         eval_ts, **mu_kwargs
@@ -75,7 +75,7 @@ def _lam_hawkes_lite(
         phi_kernel,
         eta=1.0,
         start=0.0,
-        phi_kernel_kwargs={},
+        phi_kwargs={},
         mu_kwargs={},
         **kwargs):
     """
@@ -90,7 +90,7 @@ def _lam_hawkes_lite(
     for i in range(eval_ts.size):
         deltas[:] = eval_ts[i] - ts
         mask[:] = deltas > 0.0
-        endo[i] = np.sum(phi_kernel(deltas, **phi_kernel_kwargs) * mask)
+        endo[i] = np.sum(phi_kernel(deltas, **phi_kwargs) * mask)
     exo = mu_kernel(eval_ts, **mu_kwargs)
     return endo * eta + exo
 
@@ -100,17 +100,17 @@ def big_lam_hawkes(
         eval_ts,
         mu,
         phi_kernel,
-        mu_kernel=0.0,
+        mu_kernel=1.0,
         eta=1.0,
         start=0.0,
-        phi_kernel_kwargs={},
+        phi_kwargs={},
         mu_kwargs={},
         **kwargs
         ):
     """
     True integrated intensity of hawkes process.
     since you are probably evaluating this only at one point,
-    this is only available in vectorised high-memory version.
+    this is only available in a vectorised high-memory version.
     """
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = influence.as_influence_kernel(mu_kernel)
@@ -123,13 +123,66 @@ def big_lam_hawkes(
     mask = deltas > 0.0
     big_endo = phi_kernel.integrate(
         deltas.ravel(),
-        **phi_kernel_kwargs
+        **phi_kwargs
     ).reshape(deltas.shape) * mask
     big_exo = (
         mu_kernel.integrate(eval_ts, **mu_kwargs) -
         mu_kernel.integrate(start, **mu_kwargs)
     )
     return big_endo.sum(0) * eta + big_exo
+
+
+def loglik(
+        ts,
+        phi_kernel=None,
+        mu_kernel=1.0,
+        mu=1.0,
+        eta=1.0,
+        start=0.0,
+        end=None,
+        eval_ts=None,
+        omega=[],
+        mu_kwargs={},
+        phi_kwargs={}):
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = influence.as_influence_kernel(mu_kernel)
+
+    if phi_kernel is None:
+        phi_kernel = phi_kernel
+    if end is None:
+        end = ts[-1]
+    # as an optimisation we allow passing in an eval_ts array,
+    # in which case start and end are ignored.
+    if eval_ts is None:
+        if end > ts[-1]:
+            eval_ts = np.concatenate((ts[ts > start], [end]))
+        else:
+            eval_ts = ts[np.logical_and((ts > start), (ts < end))]
+
+    lam = lam_hawkes(
+        ts=ts,
+        eval_ts=eval_ts,
+        mu=mu,
+        phi_kernel=phi_kernel,
+        mu_kernel=mu_kernel,
+        eta=eta,
+        eval_ts=eval_ts,
+        phi_kwargs=phi_kwargs,
+        mu_kwargs=mu_kwargs
+    )
+    big_lam = big_lam_hawkes(
+        ts=ts,
+        mu=mu,
+        phi_kernel=phi_kernel,
+        mu_kernel=mu_kernel,
+        start=start,
+        eta=eta,
+        eval_ts=np.array(end),
+        phi_kwargs=phi_kwargs,
+        mu_kwargs=mu_kwargs
+    )
+
+    return np.sum(np.log(lam)) - big_lam
 
 
 class ContinuousExact(object):
@@ -156,10 +209,8 @@ class ContinuousExact(object):
     def _pack(
             self,
             mu=1.0,
-            kappa=0.1,
-            tau=1.0,
-            log_omega=0.0,
-            **kwargs
+            phi_kwargs,
+            mu_kwargs,
             ):
         n_tau = self.n_phi_kernel_bases * self._fit_tau
         n_omega = self.n_omega_bases * self._fit_omega
@@ -170,70 +221,79 @@ class ContinuousExact(object):
             n_omega
         )
         packed[0] = mu
-        packed[1:self.n_phi_kernel_bases + 1] = kappa
+        packed[
+            1:self.n_phi_kernel_bases + 1
+        ] = phi_kwargs.get('kappa', [])
         packed[
             self.n_phi_kernel_bases + 1:
-            self.n_phi_kernel_bases + n_tau + 1] = tau
-        packed[self.n_phi_kernel_bases + n_tau + 1:] = log_omega
+            self.n_phi_kernel_bases + n_tau + 1
+        ] = phi_kwargs.get('tau', [])
+        packed[
+            self.n_phi_kernel_bases + n_tau + 1:
+        ] = mu_kwargs.get('kappa', [])
         return packed
 
     def _unpack(
             self,
             packed):
         """
-        returns mu, kappa, tau, log_omega
+        returns mu, kappa, tau, omega in dict from array
         """
         n_tau = self.n_phi_kernel_bases * self._fit_tau
         n_omega = self.n_omega_bases * self._fit_omega
-        unpacked = {
-            'mu': packed[0],
-            'kappa': packed[1:self.n_phi_kernel_bases+1],
-        }
+        phi_kwargs = dict(
+            kappa=packed[1:self.n_phi_kernel_bases+1]
+        )
+        mu_kwargs = dict()
+        unpacked = dict(
+            mu=packed[0],
+            phi_kwargs=phi_kwargs,
+            mu_kwargs=mu_kwargs,
+        )
+        # are we fitting time parameters?
         if n_tau > 0:
-            unpacked['tau'] = packed[
-                self.n_phi_kernel_bases + 1:self.n_phi_kernel_bases + n_tau + 1
+            phi_kwargs['tau'] = packed[
+                self.n_phi_kernel_bases + 1:
+                self.n_phi_kernel_bases + n_tau + 1
             ]
+        # omega parameters - exogenous variation
         if n_omega > 0:
-            unpacked['omega'] = packed[
+            mu_kwargs['kappa'] = packed[
                 self.n_phi_kernel_bases + n_tau + 1:
             ]
         return unpacked
 
     def _negloglik_packed(
             self,
-            param_vector, **kwargs):
-        return self.negloglik(
+            param_vector,
+            **kwargs):
+        return self._negloglik(
             self._ts,
             self._eval_ts,
             self.phi_kernel,
             **self._unpack(param_vector),
             **kwargs)
 
-    def negloglik(
+    def _negloglik(
             self,
-            ts,
-            eval_ts=None,
-            phi_kernel=None,
             mu=1.0,
             eta=1.0,
-            start=None,
-            end=None,
-            log_omega=[],
-            **phi_kernel_kwargs):
-        if phi_kernel is None:
-            phi_kernel = self.phi_kernel
-        if end is None:
-            end = getattr(self, '_t_end', ts[-1])
-        if start is None:
-            start = getattr(self, '_t_start', 0.0)
+            omega=[],
+            phi_kwargs,
+            mu_kwargs,
+            **kwargs):
+
         lam = lam_hawkes(
-            ts=ts,
+            ts=self._ts,
+            eval_ts=self._eval_ts,
             mu=mu,
-            phi_kernel=phi_kernel,
+            phi_kernel=self._phi_kernel,
+            mu_kernel=self.self._mu_kernel,
             eta=eta,
             eval_ts=eval_ts,
-            phi_kernel_kwargs=phi_kernel_kwargs,
-            mu_kwargs={}
+            phi_kwargs=phi_kwargs,
+            mu_kwargs=mu_kwargs,
+            **kwargs
         )
         big_lam = big_lam_hawkes(
             ts=ts,
@@ -242,34 +302,35 @@ class ContinuousExact(object):
             start=start,
             eta=eta,
             eval_ts=np.array(end),
-            phi_kernel_kwargs=phi_kernel_kwargs,
-            mu_kwargs={}
+            phi_kwargs=phi_kwargs,
+            mu_kwargs=mu_kwargs,
+            **kwargs
         )
-        negloglik = big_lam - np.sum(np.log(lam))
-        return negloglik
-
-    def loglik(
-            self,
-            *args,
-            **kwargs):
-        return -self.loglik(*args, **kwargs)
+        _negloglik = big_lam - np.sum(np.log(lam))
+        return _negloglik
 
     def _penalty_weight_packed(
             self,
             pi_kappa=0.0,
-            pi_omega=0.0
+            pi_omega=0.0,
+            **kwargs
             ):
         return self._pack(
             mu=0.0,
-            kappa=pi_kappa,
-            log_omega=pi_omega
+            phi_kwargs=dict(
+                kappa=pi_kappa
+            ),
+            mu_kwargs=dict(
+                kappa=pi_omega
+            )
         )  # / self.penalty_scale
 
     def _penalty_packed(
             self,
             param_vector,
             pi_kappa=0.0,
-            pi_omega=0.0
+            pi_omega=0.0,
+            **kwargs
             ):
         # 2 different l_1 penalties
         return np.sum(
@@ -285,6 +346,7 @@ class ContinuousExact(object):
             param_vector,
             pi_kappa=0.0,
             pi_omega=0.0,
+            **kwargs
             ):
         """
         approximate self._dof_packed differentiably,
@@ -296,7 +358,8 @@ class ContinuousExact(object):
             self,
             param_vector,
             pi_kappa=0.0,
-            pi_omega=0.0
+            pi_omega=0.0,
+            **kwargs
             ):
         """
         estimate self._dof_packed using a naive scale-unaware threshold
@@ -307,13 +370,16 @@ class ContinuousExact(object):
             self,
             param_vector,
             pi_kappa=0.0,
-            pi_omega=0.0):
+            pi_omega=0.0,
+            **kwargs):
         return self._negloglik_packed(
-            param_vector
+            param_vector,
+            **kwargs
         ) + self._penalty_packed(
             param_vector,
             pi_kappa,
-            # pi_omega
+            # pi_omega,
+            **kwargs
         )
 
     def fit(
@@ -326,10 +392,17 @@ class ContinuousExact(object):
         self._fit_tau = fit_tau
         self._fit_omega = fit_omega
 
+        param_kwargs = dict()
+        for k in [
+            'mu', 'tau', 'kappa', 'omega'
+        ]:
+            v = kwargs.get(k, None)
+            if v is not None:
+                param_kwargs[k] = v
         return self._fit_packed(
             ts,
-            self._pack(
-                **kwargs
+            param_vector=self._pack(
+                **param_kwargs
             ),
             **kwargs
         )
@@ -351,6 +424,7 @@ class ContinuousExact(object):
             backoff=0.75,
             warm_start=False,
             n_omega_bases=0,
+            **kwargs
             ):
 
         self.n_omega_bases = n_omega_bases
@@ -374,7 +448,7 @@ class ContinuousExact(object):
             else:
                 mu_kernel = influence.ConstKernel()
         self._mu_kernel = mu_kernel
-        # Full likelihood must evaluate at the end also
+        # Full data likelihood must evaluate at the end also
         if ts[-1] < self._t_end:
             _eval_ts = np.append(
                 ts[ts > self._t_start],
@@ -393,7 +467,7 @@ class ContinuousExact(object):
         param_floor = self._pack(
             mu=0.0,  # unused?
             kappa=0.0,
-            log_omega=-np.inf
+            omega=-np.inf
         )
 
         n_params = param_vector.size
@@ -404,7 +478,7 @@ class ContinuousExact(object):
         dof_path = np.zeros(max_steps)
         aic_path = np.zeros(max_steps)
 
-        grad_negloglik = autograd.grad(self._negloglik_packed, 0)
+        grad__negloglik = autograd.grad(self._negloglik_packed, 0)
         grad_penalty = autograd.grad(self._penalty_packed, 0)
         # grad_objective = autograd.grad(self._objective_packed, 0)
 
@@ -417,9 +491,9 @@ class ContinuousExact(object):
             best_param_vector = np.array(param_vector)
 
             for i in range(step_iter):
-                g_negloglik = grad_negloglik(param_vector)
+                g__negloglik = grad__negloglik(param_vector)
                 g_penalty = grad_penalty(param_vector, pi_kappa, pi_omega)
-                g = g_negloglik + g_penalty
+                g = g__negloglik + g_penalty
                 self._debug_print(param_vector, g)
                 avg_sq_grad[:] = avg_sq_grad * gamma + g**2 * (1 - gamma)
 
@@ -428,7 +502,7 @@ class ContinuousExact(object):
                 velocity[np.logical_not(np.isfinite(velocity))] = 0.0
 
                 penalty_dominant = np.abs(
-                    g_negloglik
+                    g__negloglik
                 ) < (
                     self._penalty_weight_packed(pi_kappa, pi_omega)
                 )
