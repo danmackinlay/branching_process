@@ -129,12 +129,12 @@ def phi_var_plot(
     plt.fill_between(x=x, y1=y_vlow, y2=y_vhigh, step='post', alpha=0.4)
     plt.plot(x, y, drawstyle='steps-post')
 
-    phi_evalpts = np.linspace(
+    phi_eval_ts = np.linspace(
         np.amin(basis_lag),
         np.amax(basis_lag),
         100
     )
-    phi_eval = phi(phi_evalpts)
-    plt.plot(phi_evalpts, phi_eval, color="red", label=label)
+    phi_eval = phi(phi_eval_ts)
+    plt.plot(phi_eval_ts, phi_eval, color="red", label=label)
 
     return plt.gcf()

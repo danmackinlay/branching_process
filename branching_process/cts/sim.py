@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import random
 from warnings import warn
-from .  import influence
+from . import influence
 
 
 def sim_poisson(
@@ -94,8 +94,7 @@ def sim_inhom_clusters(
     :rtype: numpy.array
 
     """
-
-    lam_m = lam_m or getattr(lam, 'majorant', None)
+    lam = influence.as_influence_kernel(lam, majorant=lam_m)
     # Vector of current times
     immigrants = np.asfarray(immigrants)
 
@@ -108,10 +107,7 @@ def sim_inhom_clusters(
 
     while T.size > 0:
         # calculate majorant from current timestep
-        if lam_m is not None:
-            rate_max = eta * lam_m(T-immigrants)
-        else:
-            rate_max = lam(T-immigrants)
+        rate_max = eta * lam.majorant(T-immigrants)
 
         # if the majorant has dropped to 0 we are done
         alive = rate_max > eps
@@ -193,8 +189,8 @@ def sim_branching(
         Tnext = sim_inhom_clusters(
             lam=phi,
             eta=eta,
-            immigrants=Tnext, end=end,
-            lam_m=phi.majorant)
+            immigrants=Tnext,
+            end=end,)
         # print('gen', gen, Tnext.size)
         if Tnext.size == 0:
             break

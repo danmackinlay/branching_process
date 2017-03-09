@@ -185,7 +185,7 @@ class ContinuousExact(object):
             param_vector, **kwargs):
         return self.negloglik(
             self._ts,
-            self._evalts,
+            self._eval_ts,
             self.phi,
             **self._unpack(param_vector),
             **kwargs)
@@ -344,19 +344,19 @@ class ContinuousExact(object):
 
         # Full likelihood is best evaluated at the end also
         if ts[-1] < self._t_end:
-            _evalts = np.append(
+            _eval_ts = np.append(
                 ts[ts > self._t_start],
                 [self._t_end]
             )
         else:
-            _evalts = ts[
+            _eval_ts = ts[
                 np.logical_and(
                     ts >= self._t_start,
                     ts < self._t_end
                 )
             ]
 
-        self._evalts = _evalts
+        self._eval_ts = _eval_ts
 
         param_floor = self._pack(
             mu=0.0,  # unused?
@@ -469,7 +469,7 @@ class ContinuousExact(object):
             #         pi_kappa * 0.1
             #     )
         del(self._ts)
-        del(self._evalts)
+        del(self._eval_ts)
         return Fit(
             param_path=param_path[:, :j],
             pi_kappa_path=pi_kappa_path[:j],
