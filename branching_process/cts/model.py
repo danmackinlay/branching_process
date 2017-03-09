@@ -74,7 +74,7 @@ def _lam_hawkes_lite(
         mu_kernel,
         phi_kernel,
         eta=1.0,
-        start=0.0,
+        t_start=0.0,
         phi_kwargs={},
         mu_kwargs={},
         **kwargs):
@@ -102,7 +102,7 @@ def big_lam_hawkes(
         phi_kernel,
         mu_kernel=1.0,
         eta=1.0,
-        start=0.0,
+        t_start=0.0,
         phi_kwargs={},
         mu_kwargs={},
         **kwargs
@@ -127,7 +127,7 @@ def big_lam_hawkes(
     ).reshape(deltas.shape) * mask
     big_exo = (
         mu_kernel.integrate(eval_ts, **mu_kwargs) -
-        mu_kernel.integrate(start, **mu_kwargs)
+        mu_kernel.integrate(t_start, **mu_kwargs)
     )
     return big_endo.sum(0) * eta + big_exo
 
@@ -138,8 +138,8 @@ def loglik(
         mu_kernel=1.0,
         mu=1.0,
         eta=1.0,
-        start=0.0,
-        end=None,
+        t_start=0.0,
+        t_end=None,
         eval_ts=None,
         omega=[],
         mu_kwargs={},
@@ -149,15 +149,15 @@ def loglik(
 
     if phi_kernel is None:
         phi_kernel = phi_kernel
-    if end is None:
-        end = ts[-1]
+    if t_end is None:
+        t_end = ts[-1]
     # as an optimisation we allow passing in an eval_ts array,
-    # in which case start and end are ignored.
+    # in which case t_start and t_end are ignored.
     if eval_ts is None:
-        if end > ts[-1]:
-            eval_ts = np.concatenate((ts[ts > start], [end]))
+        if t_end > ts[-1]:
+            eval_ts = np.concatenate((ts[ts > t_start], [t_end]))
         else:
-            eval_ts = ts[np.logical_and((ts > start), (ts < end))]
+            eval_ts = ts[np.logical_and((ts > t_start), (ts < t_end))]
 
     lam = lam_hawkes(
         ts=ts,
@@ -174,9 +174,9 @@ def loglik(
         mu=mu,
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
-        start=start,
+        t_start=t_start,
         eta=eta,
-        eval_ts=np.array(end),
+        eval_ts=np.array(t_end),
         phi_kwargs=phi_kwargs,
         mu_kwargs=mu_kwargs
     )

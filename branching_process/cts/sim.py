@@ -6,26 +6,26 @@ from . import influence
 
 def sim_poisson(
         mu,
-        start=0.0,
-        end=1.0):
+        t_start=0.0,
+        t_end=1.0):
     """
     Simulate constant-rate Poisson process.
 
     :type mu: float
     :param mu: rate of the process.
 
-    :type start: float
-    :param start: start simulating immigrants at this time
+    :type t_start: float
+    :param t_start: t_start simulating immigrants at this time
 
-    :type end: float
-    :param end: no events after this time
+    :type t_end: float
+    :param t_end: no events after this time
 
-    :return: vector of simulated event times on [start, end], unsorted.
+    :return: vector of simulated event times on [t_start, t_end], unsorted.
     :rtype: numpy.array
     """
-    timespan = end-start
+    timespan = t_end-t_start
     N = random.poisson(lam=mu*timespan)
-    return start + random.rand(N)*timespan
+    return t_start + random.rand(N)*timespan
 
 
 def sim_piecewise_poisson(
@@ -51,8 +51,8 @@ def sim_piecewise_poisson(
     n_steps = t_v.size - 1
 
     return np.concatenate([
-        sim_poisson(mu, start, end)
-        for mu, start, end
+        sim_poisson(mu, t_start, t_end)
+        for mu, t_start, t_end
         in zip(mu_v[:n_steps], t_v[:-1], t_v[1:])
     ])
 
@@ -61,7 +61,7 @@ def sim_inhom_clusters(
         lam,
         immigrants=0.0,
         eta=1.0,
-        end=np.inf,
+        t_end=np.inf,
         lam_m=None,
         eps=1e-10):
     """
@@ -78,14 +78,14 @@ def sim_inhom_clusters(
       If lambda is non-increasing, it can be its own majorant.
 
     :type immigrants: numpy.array
-    :param immigrants: start time for each process.
+    :param immigrants: t_start time for each process.
       the size of this gives
       the number of independent processes to simulate.
       These will not be returned.
 
-    :type end: numpy.array
-    :param end: end time for each process.
-      Scalar, or same dimension as start.
+    :type t_end: numpy.array
+    :param t_end: t_end time for each process.
+      Scalar, or same dimension as t_start.
 
     :type eta: float
     :param eta: scale factor for the lam kernel ratio.
@@ -100,7 +100,7 @@ def sim_inhom_clusters(
 
     substep = 0
     T = immigrants.copy()
-    end = end * np.ones_like(T)  # implicit broadcast of possible scalar
+    t_end = t_end * np.ones_like(T)  # implicit broadcast of possible scalar
 
     # accumulated times
     allT = [np.array([])]
@@ -114,7 +114,7 @@ def sim_inhom_clusters(
         T = T[alive]
         rate_max = rate_max[alive]
         immigrants = immigrants[alive]
-        end = end[alive]
+        t_end = t_end[alive]
         if T.size == 0:
             break
 
@@ -125,12 +125,12 @@ def sim_inhom_clusters(
         # used in the rate majorant but on the incremented times.
         rate = eta * lam(T-immigrants)
         non_spurious = np.random.rand(T.size) * rate_max <= rate
-        alive = (T < end)
+        alive = (T < t_end)
         # Randomly thin out to correct for majorant and time inc
         allT.append(T[alive & non_spurious].copy())
         T = T[alive]
         immigrants = immigrants[alive]
-        end = end[alive]
+        t_end = t_end[alive]
         substep += 1
     allT = np.concatenate(allT)
     return allT
@@ -142,7 +142,7 @@ def sim_branching(
         eta=1.0,
         phi_m=None,
         max_gen=150,  # That's a *lot*
-        end=np.inf):
+        t_end=np.inf):
     """
     Simulate Hawkes-type branching process with given immigrants
     Method of Ogata (1981)
@@ -171,11 +171,11 @@ def sim_branching(
     :type max_gen: int
     :param max_gen: Try to stop memory errors by clipping generations
 
-    :type start: float
-    :param start: start simulating immigrants at this time
+    :type t_start: float
+    :param t_start: t_start simulating immigrants at this time
 
-    :type end: float
-    :param end: ignore events after this time
+    :type t_end: float
+    :param t_end: ignore events after this time
 
     :return: vector of simulated child event times on [T0, T1]. unsorted.
     :rtype: numpy.array
@@ -190,7 +190,7 @@ def sim_branching(
             lam=phi_kernel,
             eta=eta,
             immigrants=Tnext,
-            end=end,)
+            t_end=t_end,)
         # print('gen', gen, Tnext.size)
         if Tnext.size == 0:
             break
@@ -211,7 +211,7 @@ def sim_hawkes(
         phi_kernel,
         mu=1.0,
         eta=1.0,
-        start=0.0, end=1.0,
+        t_start=0.0, t_end=1.0,
         phi_m=None,
         immigrants=None,
         sort=True,
@@ -237,11 +237,11 @@ def sim_hawkes(
     :param eta: scale factor for the phi_kernel kernel ratio.
       If the L_1 norm of `phi_kernel` is 1, this is the branching ratio.
 
-    :type start: float
-    :param start: start simulating immigrants at this time
+    :type t_start: float
+    :param t_start: t_start simulating immigrants at this time
 
-    :type end: float
-    :param end: ignore events after this time
+    :type t_end: float
+    :param t_end: ignore events after this time
 
     :type phi_m: function
     :param phi_m: a majorant; a non-increasing L-1 integrable function which is
@@ -258,7 +258,7 @@ def sim_hawkes(
 
     immigrants = np.append(
         immigrants,
-        sim_poisson(mu, start, end)
+        sim_poisson(mu, t_start, t_end)
     )
     ts = np.append(
         immigrants,
@@ -266,7 +266,7 @@ def sim_hawkes(
             immigrants=immigrants,
             phi_kernel=phi_kernel,
             eta=eta,
-            end=end,
+            t_end=t_end,
             phi_m=phi_m,
             **kwargs
         )

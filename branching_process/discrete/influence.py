@@ -30,13 +30,13 @@ def decaying_basis(
 
 def poisson_basis(
         max_m=20,
-        start=1,
+        t_start=1,
         clip_t=None,
         spacing=2.0,
         epsilon=1e-10,
         *args, **kwargs):
     taus = []
-    prev_tau = start
+    prev_tau = t_start
     for i in range(max_m + 1):
         sd = math.sqrt(prev_tau)
         prev_tau = sd * spacing + prev_tau
@@ -53,9 +53,9 @@ def poisson_basis(
     return kernel / (kernel.sum(1).reshape(-1, 1))
 
 
-def geom_basis(max_m=10, start=1, clip_t=None, spacing=1.0, *args, **kwargs):
+def geom_basis(max_m=10, t_start=1, clip_t=None, spacing=1.0, *args, **kwargs):
     taus = []
-    prev_tau = start
+    prev_tau = t_start
     for i in range(max_m+1):
         taus.append(prev_tau)
         sd = prev_tau

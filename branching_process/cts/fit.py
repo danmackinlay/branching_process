@@ -24,18 +24,8 @@ from . import model
 class ContinuousExact(object):
     def __init__(
             self,
-            phi_kernel=None,
-            n_phi_bases=1,
             debug=False
             ):
-        if phi_kernel is None:
-            phi_kernel = influence.MaxwellKernel(n_bases=5)
-        else:
-            phi_kernel = influence.as_influence_kernel(
-                phi_kernel, n_bases=n_phi_bases
-            )
-        self.phi_kernel = phi_kernel
-        self.n_phi_bases = phi_kernel.n_bases
         self.debug = debug
 
     def _debug_print(self, *args, **kwargs):
@@ -59,14 +49,14 @@ class ContinuousExact(object):
         packed[0] = mu
         packed[
             1:self.n_phi_bases + 1
-        ] = phi_kwargs.get('kappa', [])
+        ] = phi_kwargs.get('kappa', 0.0)
         packed[
             self.n_phi_bases + 1:
             self.n_phi_bases + n_tau + 1
-        ] = phi_kwargs.get('tau', [])
+        ] = phi_kwargs.get('tau', 1.0)
         packed[
             self.n_phi_bases + n_tau + 1:
-        ] = mu_kwargs.get('kappa', [])
+        ] = mu_kwargs.get('kappa', 0.0)
         return packed
 
     def _unpack(
@@ -104,9 +94,6 @@ class ContinuousExact(object):
             param_vector,
             **kwargs):
         return self._negloglik(
-            self._ts,
-            self._eval_ts,
-            self.phi_kernel,
             **self._unpack(param_vector),
             **kwargs)
 
@@ -122,8 +109,8 @@ class ContinuousExact(object):
             ts=self._ts,
             eval_ts=self._eval_ts,
             mu=mu,
-            phi_kernel=self._phi_kernel,
-            mu_kernel=self.self._mu_kernel,
+            phi_kernel=self.phi_kernel,
+            mu_kernel=self.mu_kernel,
             eta=eta,
             phi_kwargs=phi_kwargs,
             mu_kwargs=mu_kwargs,
@@ -206,70 +193,20 @@ class ContinuousExact(object):
     def fit(
             self,
             ts,
+            phi_kernel=None,
+            mu_kernel=None,
+            n_phi_bases=1,
+            n_mu_bases=0,
             fit_tau=False,
             fit_omega=False,
-            **kwargs
-            ):
-        self._fit_tau = fit_tau
-        self._fit_omega = fit_omega
-
-        param_kwargs = dict()
-        for k in [
-            'mu', 'tau', 'kappa', 'omega'
-        ]:
-            v = kwargs.get(k, None)
-            if v is not None:
-                param_kwargs[k] = v
-        return self._fit_packed(
-            ts,
-            param_vector=self._pack(
-                **param_kwargs
-            ),
-            **kwargs
-        )
-
-    def _fit_packed(
-            self,
-            ts,
-            param_vector=None,
-            mu_kernel=None,
             t_start=0.0,
             t_end=None,
-            pi_kappa=0.0,
-            pi_omega=1e-8,
-            max_steps=50,
-            step_iter=50,
-            step_size=0.1,
-            gamma=0.9,
-            eps=1e-8,
-            backoff=0.75,
-            warm_start=False,
-            n_mu_bases=0,
             **kwargs
             ):
-
-        self.n_mu_bases = n_mu_bases
-
-        if warm_start:
-            param_vector = self._param_vector
-        else:
-            if param_vector is None:
-                param_vector = self._pack()
-        self._param_vector = param_vector
-
         self._t_start = t_start
         self._t_end = t_end or ts[-1]
         self._ts = ts
-        if mu_kernel is None:
-            if n_mu_bases > 0:
-                mu_kernel = influence.LinearStepKernel(
-                    start=self._t_start,
-                    end=self._t_end,
-                    n_bases=n_mu_bases)
-            else:
-                mu_kernel = influence.ConstKernel()
-        self._mu_kernel = mu_kernel
-        # Full data likelihood must evaluate at the end also
+        # Full data likelihood must evaluate at the t_end also
         if ts[-1] < self._t_end:
             _eval_ts = np.append(
                 ts[ts > self._t_start],
@@ -285,12 +222,70 @@ class ContinuousExact(object):
 
         self._eval_ts = _eval_ts
 
+        if phi_kernel is None:
+            phi_kernel = influence.MaxwellKernel(n_bases=5)
+        else:
+            phi_kernel = influence.as_influence_kernel(
+                phi_kernel, n_bases=n_phi_bases
+            )
+        self.phi_kernel = phi_kernel
+        self.n_phi_bases = phi_kernel.n_bases
+        if mu_kernel is None:
+            if n_mu_bases > 0:
+                mu_kernel = influence.LinearStepKernel(
+                    t_start=self._t_start,
+                    t_end=self._t_end,
+                    n_bases=n_mu_bases)
+            else:
+                mu_kernel = influence.ConstKernel()
+        self.mu_kernel = mu_kernel
+        self.n_mu_bases = n_mu_bases
+
+        self._fit_tau = fit_tau
+        self._fit_omega = fit_omega
+
+        param_kwargs = dict()
+        for k in [
+            'mu', 'tau', 'kappa', 'omega'
+        ]:
+            v = kwargs.get(k, None)
+            if v is not None:
+                param_kwargs[k] = v
+        return self._fit_packed(
+            param_vector=self._pack(
+                **param_kwargs
+            ),
+            **kwargs
+        )
+
+    def _fit_packed(
+            self,
+            param_vector=None,
+            pi_kappa=0.0,
+            pi_omega=1e-8,
+            max_steps=50,
+            step_iter=50,
+            step_size=0.1,
+            gamma=0.9,
+            eps=1e-8,
+            backoff=0.75,
+            warm_start=False,
+            **kwargs
+            ):
+
+        if warm_start:
+            param_vector = self._param_vector
+        else:
+            if param_vector is None:
+                param_vector = self._pack()
+        self._param_vector = param_vector
+
         param_floor = self._pack(
             mu=0.0,  # unused?
-            mu_args=dict(
+            mu_kwargs=dict(
                 kappa=0.0
             ),
-            phi_args=dict(
+            phi_kwargs=dict(
                 kappa=0.0
             )
         )

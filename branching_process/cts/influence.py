@@ -168,18 +168,18 @@ class LinearStepKernel(InfluenceKernel):
     """
     def __init__(
             self,
-            end,
+            t_end,
             n_bases=100,
             *args,
             **fixed_args
             ):
-        self.end = end
+        self.t_end = t_end
         super(LinearStepKernel, self).__init__(
             n_bases=n_bases,
             *args, **fixed_args)
         self._fixed_args.setdefault(
             'tau',
-            np.linspace(0, end, n_bases+1, endpoint=True)
+            np.linspace(0, t_end, n_bases+1, endpoint=True)
         )
 
     def __call__(self, t, *args, **kwargs):
