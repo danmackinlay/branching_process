@@ -134,7 +134,34 @@ class MaxwellKernel(InfluenceKernel):
         )
 
 
-class StepLinearKernel(InfluenceKernel):
+class ConstKernel(InfluenceKernel):
+    """
+    Constant rate.
+    This is presumed to be for background rate modelling.
+    """
+    def __init__(
+            self,
+            *args,
+            **fixed_args
+            ):
+        super(ConstKernel, self).__init__(
+            n_bases=0,
+            *args, **fixed_args)
+
+    def __call__(self, t, *args, **kwargs):
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        mu = new_kwargs.pop('mu', 0.0)
+        return np.ones_like(t) * mu
+
+    def integrate(self, t, *args, **kwargs):
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        mu = new_kwargs.pop('mu', 0.0)
+        return t * mu
+
+
+class LinearStepKernel(InfluenceKernel):
     """
     Piecewise-constant rate.
     This is presumed to be for background rate modelling.
@@ -147,7 +174,7 @@ class StepLinearKernel(InfluenceKernel):
             **fixed_args
             ):
         self.end = end
-        super(StepLinearKernel, self).__init__(
+        super(LinearStepKernel, self).__init__(
             n_bases=n_bases,
             *args, **fixed_args)
         self._fixed_args.setdefault(
@@ -198,6 +225,14 @@ class StepLinearKernel(InfluenceKernel):
             1
         ) + (mu * t.ravel())
 
+    def majorant(self, t, *args, **kwargs):
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        mu = new_kwargs.pop('mu', 0.0)
+        kappa = new_kwargs.pop('kappa')
+        kappa = np.maximum(kappa, -mu)
+        return np.ones_like(t) * (mu + np.amax(kappa))
+
 
 class GenericKernel(InfluenceKernel):
     """
@@ -221,18 +256,16 @@ def as_influence_kernel(
         function,
         majorant=None,
         integral=None,
-        n_bases=1
+        n_bases=1,
+        **kwargs
         ):
     if hasattr(function, 'majorant'):
         return function
     elif not callable(function):
-        # a number?
-        return GenericKernel(
-            kernel=lambda t, **kwargs: function,
-            integral=lambda t, **kwargs: t * function,
-            n_bases=0
-        )
+        # a number or None?
+        return ConstKernel(mu=function or 0.0)
     else:
+        # a function, but not a kernel
         return GenericKernel(
             kernel=function,
             majorant=majorant,

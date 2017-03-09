@@ -138,7 +138,7 @@ def sim_inhom_clusters(
 
 def sim_branching(
         immigrants,
-        phi,
+        phi_kernel,
         eta=1.0,
         phi_m=None,
         max_gen=150,  # That's a *lot*
@@ -147,21 +147,21 @@ def sim_branching(
     Simulate Hawkes-type branching process with given immigrants
     Method of Ogata (1981)
 
-    :type phi: function
-    :param phi: influence kernel for each event,
+    :type phi_kernel: function
+    :param phi_kernel: influence kernel for each event,
       a non-negative function with positive support.
-      The L_1 norm of `phi`*`eta` is the branching ratio which,
+      The L_1 norm of `phi_kernel`*`eta` is the branching ratio which,
       if it is greater than 1, will cause explosions, and
       if it is less than 1 will cause cluster extinction and
       if it is equal to 1 will cause overenthusiastic physicists.
 
     :type eta: function
-    :param eta: scale factor for the phi kernel ratio.
-      If the L_1 norm of `phi` is 1, this is the branching ratio.
+    :param eta: scale factor for the phi_kernel kernel ratio.
+      If the L_1 norm of `phi_kernel` is 1, this is the branching ratio.
 
     :type phi_m: function
     :param phi_m: a majorant; a non-increasing L-1 integrable function
-      which is greater than or equal to the kernel. If phi is already
+      which is greater than or equal to the kernel. If phi_kernel is already
       non-increasing it can be its own majorant, and this will be assumed
       as default.
 
@@ -181,13 +181,13 @@ def sim_branching(
     :rtype: numpy.array
     """
 
-    phi = influence.as_influence_kernel(phi, majorant=phi_m)
+    phi_kernel = influence.as_influence_kernel(phi_kernel, majorant=phi_m)
     Tnext = np.asfarray(immigrants)
     allT = [np.array([])]
 
     for gen in range(max_gen):
         Tnext = sim_inhom_clusters(
-            lam=phi,
+            lam=phi_kernel,
             eta=eta,
             immigrants=Tnext,
             end=end,)
@@ -208,7 +208,7 @@ def sim_branching(
 
 
 def sim_hawkes(
-        phi,
+        phi_kernel,
         mu=1.0,
         eta=1.0,
         start=0.0, end=1.0,
@@ -225,17 +225,17 @@ def sim_hawkes(
     :type immigrants: array
     :param immigrants: external immigrant process
 
-    :type phi: function
-    :param phi: influence kernel for each event,
+    :type phi_kernel: function
+    :param phi_kernel: influence kernel for each event,
       a non-negative function with positive support.
-      The L_1 norm of `phi`*`eta` is the branching ratio which,
+      The L_1 norm of `phi_kernel`*`eta` is the branching ratio which,
       if it is greater than 1, will cause explosions, and
       if it is less than 1 will cause cluster extinction and
       if it is equal to 1 will cause excitable physicists.
 
     :type eta: function
-    :param eta: scale factor for the phi kernel ratio.
-      If the L_1 norm of `phi` is 1, this is the branching ratio.
+    :param eta: scale factor for the phi_kernel kernel ratio.
+      If the L_1 norm of `phi_kernel` is 1, this is the branching ratio.
 
     :type start: float
     :param start: start simulating immigrants at this time
@@ -245,7 +245,7 @@ def sim_hawkes(
 
     :type phi_m: function
     :param phi_m: a majorant; a non-increasing L-1 integrable function which is
-      greater than or equal to the kernel. If phi is already non-increasing it
+      greater than or equal to the kernel. If phi_kernel is already non-increasing it
       can be its own majorant, and this will be assumed as default.
 
     :return: vector of simulated event times on [T0, T1], unsorted.
@@ -264,7 +264,7 @@ def sim_hawkes(
         immigrants,
         sim_branching(
             immigrants=immigrants,
-            phi=phi,
+            phi_kernel=phi_kernel,
             eta=eta,
             end=end,
             phi_m=phi_m,

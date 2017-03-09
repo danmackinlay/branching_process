@@ -23,113 +23,130 @@ from . import influence
 def lam_hawkes(
         ts,
         mu,
-        phi,
+        phi_kernel,
+        mu_kernel=0.0,
         eta=1.0,
         eval_ts=None,
         max_floats=1e8,
-        phi_kwargs={},
-        mu_kwargs={}):
+        phi_kernel_kwargs={},
+        mu_kwargs={},
+        **kwargs):
     """
     True intensity of Hawkes process.
     Memory-hungry per default; could be improve with numba.
     """
-    phi = influence.as_influence_kernel(phi)
-    mu = influence.as_influence_kernel(mu)
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = influence.as_influence_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
+    mu_kwargs = dict(
+        mu=mu,
+        **mu_kwargs
+    )
+
     if eval_ts is None:
         eval_ts = ts
     eval_ts = np.asfarray(eval_ts).ravel()
     if ((ts.size) * (eval_ts.size)) > max_floats:
         return _lam_hawkes_lite(
             ts=ts,
-            mu=mu,
-            phi=phi,
+            phi_kernel=phi_kernel,
+            mu_kernel=mu_kernel,
             eta=eta,
             eval_ts=eval_ts,
-            phi_kwargs=phi_kwargs,
-            mu_kwargs=mu_kwargs)
+            phi_kernel_kwargs=phi_kernel_kwargs,
+            mu_kwargs=mu_kwargs
+        )
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
-    endo = phi(deltas.ravel(), **phi_kwargs).reshape(deltas.shape) * mask
-    return endo.sum(0) * eta + mu(deltas, **mu_kwargs)
+    endo = phi_kernel(
+        deltas.ravel(),
+        **phi_kernel_kwargs
+    ).reshape(deltas.shape) * mask
+    exo = mu_kernel(
+        eval_ts, **mu_kwargs
+    )
+    return endo.sum(0) * eta + exo
 
 
 def _lam_hawkes_lite(
         ts,
         eval_ts,
-        mu,
-        phi,
+        mu_kernel,
+        phi_kernel,
         eta=1.0,
         start=0.0,
-        phi_kwargs={},
-        mu_kwargs={}):
+        phi_kernel_kwargs={},
+        mu_kwargs={},
+        **kwargs):
     """
-    True intensity of hawkes process.
+    True intensity of Hawkes process.
     Memory-lite version. CPU-hungry, could be improved with numba.
 
     Uses assignment so may need to be altered for differentiability.
     """
     endo = np.zeros_like(eval_ts)
-    big_endo = np.zeros_like(eval_ts)
     deltas = np.zeros_like(ts)
     mask = np.zeros_like(ts)
     for i in range(eval_ts.size):
         deltas[:] = eval_ts[i] - ts
         mask[:] = deltas > 0.0
-        endo[i] = np.sum(phi(deltas, **phi_kwargs) * mask)
-        # possibly unneeded:
-        big_endo[i] = np.sum(phi.integrate(deltas) * mask)
-    return endo * eta + mu(eval_ts, **mu_kwargs)
+        endo[i] = np.sum(phi_kernel(deltas, **phi_kernel_kwargs) * mask)
+    exo = mu_kernel(eval_ts, **mu_kwargs)
+    return endo * eta + exo
 
 
 def big_lam_hawkes(
         ts,
         eval_ts,
         mu,
-        phi,
+        phi_kernel,
+        mu_kernel=0.0,
         eta=1.0,
         start=0.0,
-        phi_kwargs={},
-        mu_kwargs={}
+        phi_kernel_kwargs={},
+        mu_kwargs={},
+        **kwargs
         ):
     """
     True integrated intensity of hawkes process.
     since you are probably evaluating this only at one point,
     this is only available in vectorised high-memory version.
     """
-    phi = influence.as_influence_kernel(phi)
-    mu = influence.as_influence_kernel(mu)
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = influence.as_influence_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
-
+    mu_kwargs = dict(
+        mu=mu,
+        **mu_kwargs
+    )
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
-    big_endo = phi.integrate(
+    big_endo = phi_kernel.integrate(
         deltas.ravel(),
-        **phi_kwargs
+        **phi_kernel_kwargs
     ).reshape(deltas.shape) * mask
-    big_lam = (
-        big_endo.sum(0) * eta +
-        mu.integrate(eval_ts, **mu_kwargs) -
-        mu.integrate(start, **mu_kwargs)
+    big_exo = (
+        mu_kernel.integrate(eval_ts, **mu_kwargs) -
+        mu_kernel.integrate(start, **mu_kwargs)
     )
-    return big_lam
+    return big_endo.sum(0) * eta + big_exo
 
 
 class ContinuousExact(object):
     def __init__(
             self,
-            phi=None,
-            n_phi_bases=1,
-            n_omega_bases=0,
+            phi_kernel=None,
+            n_phi_kernel_bases=1,
             debug=False
             ):
-        if phi is None:
-            phi = influence.MaxwellKernel(n_bases=5)
+        if phi_kernel is None:
+            phi_kernel = influence.MaxwellKernel(n_bases=5)
         else:
-            phi = influence.as_influence_kernel(phi, n_bases=n_phi_bases)
-        self.phi = phi
-        self.n_phi_bases = phi.n_bases
-        self.n_omega_bases = n_omega_bases
+            phi_kernel = influence.as_influence_kernel(
+                phi_kernel, n_bases=n_phi_kernel_bases
+            )
+        self.phi_kernel = phi_kernel
+        self.n_phi_kernel_bases = phi_kernel.n_bases
         self.debug = debug
 
     def _debug_print(self, *args, **kwargs):
@@ -144,39 +161,41 @@ class ContinuousExact(object):
             log_omega=0.0,
             **kwargs
             ):
-        n_tau = self.n_phi_bases * self._fit_tau
+        n_tau = self.n_phi_kernel_bases * self._fit_tau
         n_omega = self.n_omega_bases * self._fit_omega
         packed = np.zeros(
             1 +
-            self.n_phi_bases +
+            self.n_phi_kernel_bases +
             n_tau +
             n_omega
         )
         packed[0] = mu
-        packed[1:self.n_phi_bases + 1] = kappa
-        packed[self.n_phi_bases + 1:self.n_phi_bases + n_tau + 1] = tau
-        packed[self.n_phi_bases + n_tau + 1:] = log_omega
+        packed[1:self.n_phi_kernel_bases + 1] = kappa
+        packed[
+            self.n_phi_kernel_bases + 1:
+            self.n_phi_kernel_bases + n_tau + 1] = tau
+        packed[self.n_phi_kernel_bases + n_tau + 1:] = log_omega
         return packed
 
     def _unpack(
             self,
             packed):
         """
-        returns mu, kappa, tau, #log_omega
+        returns mu, kappa, tau, log_omega
         """
-        n_tau = self.n_phi_bases * self._fit_tau
+        n_tau = self.n_phi_kernel_bases * self._fit_tau
         n_omega = self.n_omega_bases * self._fit_omega
         unpacked = {
             'mu': packed[0],
-            'kappa': packed[1:self.n_phi_bases+1],
+            'kappa': packed[1:self.n_phi_kernel_bases+1],
         }
         if n_tau > 0:
             unpacked['tau'] = packed[
-                self.n_phi_bases + 1:self.n_phi_bases + n_tau + 1
+                self.n_phi_kernel_bases + 1:self.n_phi_kernel_bases + n_tau + 1
             ]
         if n_omega > 0:
             unpacked['omega'] = packed[
-                self.n_phi_bases + n_tau + 1:
+                self.n_phi_kernel_bases + n_tau + 1:
             ]
         return unpacked
 
@@ -186,7 +205,7 @@ class ContinuousExact(object):
         return self.negloglik(
             self._ts,
             self._eval_ts,
-            self.phi,
+            self.phi_kernel,
             **self._unpack(param_vector),
             **kwargs)
 
@@ -194,15 +213,15 @@ class ContinuousExact(object):
             self,
             ts,
             eval_ts=None,
-            phi=None,
+            phi_kernel=None,
             mu=1.0,
             eta=1.0,
             start=None,
             end=None,
             log_omega=[],
-            **phi_kwargs):
-        if phi is None:
-            phi = self.phi
+            **phi_kernel_kwargs):
+        if phi_kernel is None:
+            phi_kernel = self.phi_kernel
         if end is None:
             end = getattr(self, '_t_end', ts[-1])
         if start is None:
@@ -210,20 +229,20 @@ class ContinuousExact(object):
         lam = lam_hawkes(
             ts=ts,
             mu=mu,
-            phi=phi,
+            phi_kernel=phi_kernel,
             eta=eta,
             eval_ts=eval_ts,
-            phi_kwargs=phi_kwargs,
+            phi_kernel_kwargs=phi_kernel_kwargs,
             mu_kwargs={}
         )
         big_lam = big_lam_hawkes(
             ts=ts,
             mu=mu,
-            phi=phi,
+            phi_kernel=phi_kernel,
             start=start,
             eta=eta,
             eval_ts=np.array(end),
-            phi_kwargs=phi_kwargs,
+            phi_kernel_kwargs=phi_kernel_kwargs,
             mu_kwargs={}
         )
         negloglik = big_lam - np.sum(np.log(lam))
@@ -306,6 +325,7 @@ class ContinuousExact(object):
             ):
         self._fit_tau = fit_tau
         self._fit_omega = fit_omega
+
         return self._fit_packed(
             ts,
             self._pack(
@@ -318,6 +338,7 @@ class ContinuousExact(object):
             self,
             ts,
             param_vector=None,
+            mu_kernel=None,
             t_start=0.0,
             t_end=None,
             pi_kappa=0.0,
@@ -329,7 +350,10 @@ class ContinuousExact(object):
             eps=1e-8,
             backoff=0.75,
             warm_start=False,
+            n_omega_bases=0,
             ):
+
+        self.n_omega_bases = n_omega_bases
 
         if warm_start:
             param_vector = self._param_vector
@@ -341,8 +365,16 @@ class ContinuousExact(object):
         self._t_start = t_start
         self._t_end = t_end or ts[-1]
         self._ts = ts
-
-        # Full likelihood is best evaluated at the end also
+        if mu_kernel is None:
+            if n_omega_bases > 0:
+                mu_kernel = influence.LinearStepKernel(
+                    start=self._t_start,
+                    end=self._t_end,
+                    n_bases=n_omega_bases)
+            else:
+                mu_kernel = influence.ConstKernel()
+        self._mu_kernel = mu_kernel
+        # Full likelihood must evaluate at the end also
         if ts[-1] < self._t_end:
             _eval_ts = np.append(
                 ts[ts > self._t_start],
