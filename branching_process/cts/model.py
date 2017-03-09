@@ -20,61 +20,99 @@ except ImportError as e:
 from . import influence
 
 
-def intensity_hawkes(
-        timestamps,
+def lam_hawkes(
+        ts,
         mu,
         phi,
         eta=1.0,
-        eval_timestamps=None,
-        sort=True,
+        eval_ts=None,
         max_floats=1e8,
-        **kwargs):
+        phi_kwargs={},
+        mu_kwargs={}):
     """
     True intensity of Hawkes process.
-    Memory-hungry per default; could be improved, with numba.
+    Memory-hungry per default; could be improve with numba.
     """
-    timestamps = np.asfarray(timestamps).ravel()
-    if sort:
-        timestamps = np.sort(timestamps)
-    if eval_timestamps is None:
-        eval_timestamps = timestamps
-        if sort:
-            eval_timestamps = np.sort(eval_timestamps)
-    eval_timestamps = np.asfarray(eval_timestamps).ravel()
-    if ((timestamps.size) * (eval_timestamps.size)) > max_floats:
-        return _intensity_hawkes_lite(
-            timestamps=timestamps,
+    phi = influence.as_influence_kernel(phi)
+    mu = influence.as_influence_kernel(mu)
+    ts = np.asfarray(ts).ravel()
+    if eval_ts is None:
+        eval_ts = ts
+    eval_ts = np.asfarray(eval_ts).ravel()
+    if ((ts.size) * (eval_ts.size)) > max_floats:
+        return _lam_hawkes_lite(
+            ts=ts,
             mu=mu,
             phi=phi,
             eta=eta,
-            eval_timestamps=eval_timestamps,
-            **kwargs)
-    deltas = eval_timestamps.reshape(1, -1) - timestamps.reshape(-1, 1)
+            eval_ts=eval_ts,
+            phi_kwargs=phi_kwargs,
+            mu_kwargs=mu_kwargs)
+    deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
-    endo = phi(deltas.ravel()).reshape(deltas.shape) * mask
-    lambdas = endo.sum(0) * eta + mu
-    return lambdas
+    endo = phi(deltas.ravel(), **phi_kwargs).reshape(deltas.shape) * mask
+    return endo.sum(0) * eta + mu(deltas, **mu_kwargs)
 
 
-def _intensity_hawkes_lite(
-        timestamps,
-        eval_timestamps,
+def _lam_hawkes_lite(
+        ts,
+        eval_ts,
         mu,
         phi,
         eta=1.0,
-        **kwargs):
+        start=0.0,
+        phi_kwargs={},
+        mu_kwargs={}):
     """
     True intensity of hawkes process.
     Memory-lite version. CPU-hungry, could be improved with numba.
+
+    Uses assignment so may need to be altered for differentiability.
     """
-    endo = np.zeros_like(eval_timestamps)
-    deltas = np.zeros_like(timestamps)
-    mask = np.zeros_like(timestamps)
-    for i in range(eval_timestamps.size):
-        deltas[:] = eval_timestamps[i] - timestamps
+    endo = np.zeros_like(eval_ts)
+    big_endo = np.zeros_like(eval_ts)
+    deltas = np.zeros_like(ts)
+    mask = np.zeros_like(ts)
+    for i in range(eval_ts.size):
+        deltas[:] = eval_ts[i] - ts
         mask[:] = deltas > 0.0
-        endo[i] = np.sum(phi(deltas) * mask)
-    return endo * eta + mu
+        endo[i] = np.sum(phi(deltas, **phi_kwargs) * mask)
+        # possibly unneeded:
+        big_endo[i] = np.sum(phi.integrate(deltas) * mask)
+    return endo * eta + mu(eval_ts, **mu_kwargs)
+
+
+def big_lam_hawkes(
+        ts,
+        eval_ts,
+        mu,
+        phi,
+        eta=1.0,
+        start=0.0,
+        phi_kwargs={},
+        mu_kwargs={}
+        ):
+    """
+    True integrated intensity of hawkes process.
+    since you are probably evaluating this only at one point,
+    this is only available in vectorised high-memory version.
+    """
+    phi = influence.as_influence_kernel(phi)
+    mu = influence.as_influence_kernel(mu)
+    ts = np.asfarray(ts).ravel()
+
+    deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
+    mask = deltas > 0.0
+    big_endo = phi.integrate(
+        deltas.ravel(),
+        **phi_kwargs
+    ).reshape(deltas.shape) * mask
+    big_lam = (
+        big_endo.sum(0) * eta +
+        mu.integrate(eval_ts, **mu_kwargs) -
+        mu.integrate(start, **mu_kwargs)
+    )
+    return big_lam
 
 
 class ContinuousExact(object):
@@ -147,7 +185,7 @@ class ContinuousExact(object):
             param_vector, **kwargs):
         return self.negloglik(
             self._ts,
-            self._evalpts,
+            self._evalts,
             self.phi,
             **self._unpack(param_vector),
             **kwargs)
@@ -155,25 +193,38 @@ class ContinuousExact(object):
     def negloglik(
             self,
             ts,
-            evalpts=None,
+            eval_ts=None,
             phi=None,
             mu=1.0,
+            eta=1.0,
             start=None,
             end=None,
-            kappa=None,
             log_omega=[],
-            **kwargs):
+            **phi_kwargs):
         if phi is None:
             phi = self.phi
         if end is None:
             end = getattr(self, '_t_end', ts[-1])
         if start is None:
             start = getattr(self, '_t_start', 0.0)
-        lam = phi(ts, kappa=kappa, **kwargs) + mu
-        big_lam = phi.integrate(
-            end, kappa=kappa, **kwargs
-            ) - phi.integrate(
-            start, kappa=kappa, **kwargs
+        lam = lam_hawkes(
+            ts=ts,
+            mu=mu,
+            phi=phi,
+            eta=eta,
+            eval_ts=eval_ts,
+            phi_kwargs=phi_kwargs,
+            mu_kwargs={}
+        )
+        big_lam = big_lam_hawkes(
+            ts=ts,
+            mu=mu,
+            phi=phi,
+            start=start,
+            eta=eta,
+            eval_ts=np.array(end),
+            phi_kwargs=phi_kwargs,
+            mu_kwargs={}
         )
         negloglik = big_lam - np.sum(np.log(lam))
         return negloglik
@@ -293,19 +344,19 @@ class ContinuousExact(object):
 
         # Full likelihood is best evaluated at the end also
         if ts[-1] < self._t_end:
-            _evalpts = np.append(
+            _evalts = np.append(
                 ts[ts > self._t_start],
                 [self._t_end]
             )
         else:
-            _evalpts = ts[
+            _evalts = ts[
                 np.logical_and(
                     ts >= self._t_start,
                     ts < self._t_end
                 )
             ]
 
-        self._evalpts = _evalpts
+        self._evalts = _evalts
 
         param_floor = self._pack(
             mu=0.0,  # unused?
@@ -418,7 +469,7 @@ class ContinuousExact(object):
             #         pi_kappa * 0.1
             #     )
         del(self._ts)
-        del(self._evalpts)
+        del(self._evalts)
         return Fit(
             param_path=param_path[:, :j],
             pi_kappa_path=pi_kappa_path[:j],

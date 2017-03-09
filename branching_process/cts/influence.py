@@ -53,8 +53,8 @@ class InfluenceKernel(object):
             *args, **kwargs):
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau')
-        kappa = new_kwargs.pop('kappa')
+        tau = new_kwargs.pop('tau', [])
+        kappa = new_kwargs.pop('kappa', [])
         return getattr(
             self, '_majorant', self._kernel
         )(
@@ -69,8 +69,8 @@ class InfluenceKernel(object):
             *args, **kwargs):
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau')
-        kappa = new_kwargs.pop('kappa')
+        tau = new_kwargs.pop('tau', [])
+        kappa = new_kwargs.pop('kappa', [])
 
         return self._kernel(
             t=np.reshape(t, (-1, 1)),
@@ -84,8 +84,8 @@ class InfluenceKernel(object):
             *args, **kwargs):
         new_kwargs = dict()
         new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau')
-        kappa = new_kwargs.pop('kappa')
+        tau = new_kwargs.pop('tau', [])
+        kappa = new_kwargs.pop('kappa', [])
         return self._integrate(
             t=np.reshape(t, (-1, 1)),
             tau=np.reshape(tau, (1, -1)),
@@ -147,7 +147,9 @@ class StepLinearKernel(InfluenceKernel):
             **fixed_args
             ):
         self.end = end
-        super(StepLinearKernel, self).__init__(n_bases=n_bases, *args, **fixed_args)
+        super(StepLinearKernel, self).__init__(
+            n_bases=n_bases,
+            *args, **fixed_args)
         self._fixed_args.setdefault(
             'tau',
             np.linspace(0, end, n_bases+1, endpoint=True)
@@ -211,7 +213,7 @@ class GenericKernel(InfluenceKernel):
             ):
         self._kernel = kernel
         self._majorant = majorant if majorant is not None else kernel
-        self._integral = integral
+        self._integrate = integral
         super(GenericKernel, self).__init__(*args, **fixed_args)
 
 
@@ -223,6 +225,13 @@ def as_influence_kernel(
         ):
     if hasattr(function, 'majorant'):
         return function
+    elif not callable(function):
+        # a number?
+        return GenericKernel(
+            kernel=lambda t, **kwargs: function,
+            integral=lambda t, **kwargs: t * function,
+            n_bases=0
+        )
     else:
         return GenericKernel(
             kernel=function,
