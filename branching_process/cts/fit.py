@@ -262,8 +262,8 @@ class ContinuousExact(object):
             pi_kappa=0.0,
             pi_omega=1e-8,
             max_steps=50,
-            step_iter=50,
-            step_size=0.1,
+            step_iter=20,
+            lr=0.1,
             gamma=0.9,
             eps=1e-8,
             backoff=0.75,
@@ -305,17 +305,19 @@ class ContinuousExact(object):
         for j in range(max_steps):
             loss = self._objective_packed(param_vector)
             best_loss = loss
-            local_step_size = step_size
+            local_lr = lr
             best_param_vector = np.array(param_vector)
 
             for i in range(step_iter):
                 g_negloglik = grad_negloglik(param_vector)
                 g_penalty = grad_penalty(param_vector, pi_kappa, pi_omega)
                 g = g_negloglik + g_penalty
-                self._debug_print(param_vector, g)
+                self._debug_print(i, j, 'param', param_vector, 'grad', g)
                 avg_sq_grad[:] = avg_sq_grad * gamma + g**2 * (1 - gamma)
 
-                velocity = g/(np.sqrt(avg_sq_grad) + eps) / np.sqrt(i+1.0)
+                velocity = lr * g * (
+                        np.sqrt(avg_sq_grad) + eps
+                ) / (i+1.0)
                 # watch out, nans
                 velocity[np.logical_not(np.isfinite(velocity))] = 0.0
 
@@ -325,7 +327,7 @@ class ContinuousExact(object):
                     self._penalty_weight_packed(pi_kappa, pi_omega)
                 )
                 velocity[penalty_dominant * (velocity == 0)] = 0.0
-                new_param_vector = param_vector - velocity * local_step_size
+                new_param_vector = param_vector - velocity * local_lr
                 # coefficients that pass through 0 must stop there
                 new_param_vector[
                     np.abs(
@@ -336,13 +338,13 @@ class ContinuousExact(object):
                 new_param_vector[:] = np.maximum(new_param_vector, param_floor)
                 new_loss = self._objective_packed(new_param_vector)
                 if new_loss < loss:
-                    # print('good', loss, '=>', new_loss, local_step_size)
+                    # print('good', loss, '=>', new_loss, local_lr)
                     loss = new_loss
                     param_vector = new_param_vector
                     self._param_vector = new_param_vector
                 else:
-                    # print('bad', loss, '=>', new_loss, local_step_size)
-                    local_step_size = local_step_size * backoff
+                    # print('bad', loss, '=>', new_loss, local_lr)
+                    local_lr = local_lr * backoff
                     new_param_vector = param_vector + backoff * (
                         new_param_vector - param_vector
                     )
@@ -351,7 +353,7 @@ class ContinuousExact(object):
                     best_param_vector = np.array(param_vector)
                     best_loss = loss
 
-                if local_step_size < 1e-3:
+                if local_lr < 1e-3:
                     self._debug_print('nope', j, i, max_steps)
                     break
 
@@ -394,7 +396,7 @@ class ContinuousExact(object):
             #     )
         del(self._ts)
         del(self._eval_ts)
-        return Fit(
+        return FitHistory(
             param_path=param_path[:, :j],
             pi_kappa_path=pi_kappa_path[:j],
             pi_omega_path=pi_omega_path[:j],
@@ -402,7 +404,7 @@ class ContinuousExact(object):
             dof_path=dof_path[:j],
             aic_path=aic_path[:j],
             unpack=lambda v: self._unpack(v),
-            param_vector=param_vector,
+            param_vector=best_param_vector,
             param=self._unpack(best_param_vector),
         )
 
@@ -410,8 +412,11 @@ class ContinuousExact(object):
         return self._unpack(self._param_vector)
 
 
-class Fit(object):
+class FitHistory(object):
     def __init__(self, *args, **kwargs):
         for key in kwargs:
             setattr(self, key, kwargs[key])
         self._keys = kwargs.keys()
+
+    def __repr__(self):
+        return 'FitHistory({param!r})'.format(param=self.param)
