@@ -29,7 +29,11 @@ def lam(
     """
     if eval_ts is None:
         eval_ts = ts
-    fn = gaussian_kde(ts, (ts[-1]-ts[0])*(ts.size**-0.75))
+    fn = gaussian_kde(
+        ts,
+        (np.amax(ts)-np.amin(ts))/ts.size
+        # * (ts.size**(-0.8))
+    )
     return fn(eval_ts) * ts.size
 
 
