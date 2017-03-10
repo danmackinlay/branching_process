@@ -17,7 +17,20 @@ except ImportError as e:
     import scipy as sp
     have_autograd = False
 
+from scipy.stats import gaussian_kde
 from . import influence
+
+
+def lam(
+        ts,
+        eval_ts=None,
+        **kwargs):
+    """
+    """
+    if eval_ts is None:
+        eval_ts = ts
+    fn = gaussian_kde(ts, (ts[-1]-ts[0])*(ts.size**-0.75))
+    return fn(eval_ts) * ts.size
 
 
 def lam_hawkes(
@@ -31,7 +44,7 @@ def lam_hawkes(
         mu_kwargs={},
         **kwargs):
     """
-    True intensity of Hawkes process.
+    Intensity of Hawkes process given time series and parameters.
     Memory-hungry per default; could be improve with numba.
     """
     phi_kernel = influence.as_influence_kernel(phi_kernel)
@@ -76,7 +89,7 @@ def _lam_hawkes_lite(
         mu_kwargs={},
         **kwargs):
     """
-    True intensity of Hawkes process.
+    Intensity of Hawkes process given time series and parameters.
     Memory-lite version. CPU-hungry, could be improved with numba.
 
     Uses assignment so may need to be altered for differentiability.

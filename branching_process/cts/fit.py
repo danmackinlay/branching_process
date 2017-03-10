@@ -49,7 +49,7 @@ class ContinuousExact(object):
         packed[0] = mu
         packed[
             1:self.n_phi_bases + 1
-        ] = phi_kwargs.get('kappa', 0.0)
+        ] = phi_kwargs.get('kappa', 0.1)
         packed[
             self.n_phi_bases + 1:
             self.n_phi_bases + n_tau + 1
@@ -312,12 +312,12 @@ class ContinuousExact(object):
                 g_negloglik = grad_negloglik(param_vector)
                 g_penalty = grad_penalty(param_vector, pi_kappa, pi_omega)
                 g = g_negloglik + g_penalty
-                self._debug_print(i, j, 'param', param_vector, 'grad', g)
+                self._debug_print(j, i, 'param', param_vector, 'grad', g)
                 avg_sq_grad[:] = avg_sq_grad * gamma + g**2 * (1 - gamma)
 
                 velocity = lr * g * (
                         np.sqrt(avg_sq_grad) + eps
-                ) / (i+1.0)
+                ) / (0.1 * (i + j + 10.0))
                 # watch out, nans
                 velocity[np.logical_not(np.isfinite(velocity))] = 0.0
 
