@@ -1,19 +1,17 @@
 """
-BackgroundKernel is *like* InfluenceKernel, but not necessarily integrable and there is no support for differentiationg with respect to time.
+BackgroundKernel is *like* InfluenceKernel, but not necessarily integrable
+and there is no support for differentiationg with respect to time.
 """
 
-
-have_autograd = False
 from .influence import InfluenceKernel
+have_autograd = False
 
 try:
     import autograd
     have_autograd = True
     import autograd.numpy as np
-    import autograd.scipy as sp
 except ImportError as e:
     import numpy as np
-    import scipy as sp
 
 
 class BackgroundKernel(InfluenceKernel):
@@ -29,14 +27,13 @@ class BackgroundKernel(InfluenceKernel):
         # super(BackgroundKernel, self).__init__(*args)
 
 
-class ConstKernel(BackgroundKernel):
+class ConstKernel(InfluenceKernel):
     """
     Constant rate.
     This is presumably for background rate modelling.
     """
     def __init__(
             self,
-            mu=1.0,
             *args,
             **fixed_args
             ):
@@ -45,15 +42,11 @@ class ConstKernel(BackgroundKernel):
             *args, **fixed_args)
 
     def __call__(self, t, *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        mu = new_kwargs.pop('mu', 0.0)
+        mu = self.get_param('mu', **kwargs)
         return np.ones_like(t) * mu
 
     def integrate(self, t, *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        mu = new_kwargs.pop('mu', 0.0)
+        mu = self.get_param('mu', **kwargs)
         return t * mu
 
 
@@ -81,11 +74,9 @@ class LinearStepKernel(BackgroundKernel):
     def __call__(self, t, *args, **kwargs):
         """
         """
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau')
-        mu = new_kwargs.pop('mu', 0.0)
-        kappa = new_kwargs.pop('kappa')
+        tau = self.get_param('tau', **kwargs)
+        kappa = self.get_param('kappa', **kwargs)
+        mu = self.get_param('kappa', 0.0, **kwargs)
         kappa = np.maximum(kappa, -mu)
         t = np.reshape(t, (-1, 1))
         each = (
@@ -98,11 +89,9 @@ class LinearStepKernel(BackgroundKernel):
         ) + mu
 
     def integrate(self, t, *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau')
-        mu = new_kwargs.pop('mu', 0.0)
-        kappa = new_kwargs.pop('kappa')
+        tau = self.get_param('tau', **kwargs)
+        kappa = self.get_param('kappa', **kwargs)
+        mu = self.get_param('kappa', 0.0, **kwargs)
         kappa = np.maximum(kappa, -mu)
         t = np.reshape(t, (-1, 1))
         delta = np.diff(tau)
@@ -119,10 +108,8 @@ class LinearStepKernel(BackgroundKernel):
         ) + (mu * t.ravel())
 
     def majorant(self, t, *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        mu = new_kwargs.pop('mu', 0.0)
-        kappa = new_kwargs.pop('kappa')
+        kappa = self.get_param('kappa', **kwargs)
+        mu = self.get_param('kappa', 0.0, **kwargs)
         kappa = np.maximum(kappa, -mu)
         return np.ones_like(t) * (mu + np.amax(kappa))
 

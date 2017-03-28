@@ -261,9 +261,9 @@ class ContinuousExact(object):
         fit by Truncated Newton in each coordinate group
         """
         if tau is None:
-            tau = np.arange(self.n_tau)
-        if omega is None:
-            omega = np.zeros(self.n_omega)
+            tau = self.phi_kernel.tau()
+        if omega is None and self._fit_omega:
+            omega = self.phi_kernel.kappa()
         if kappa is None:
             kappa = np.ones(self.n_phi_bases)
 

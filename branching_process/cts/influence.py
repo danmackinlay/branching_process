@@ -17,8 +17,14 @@ class InfluenceKernel(object):
             *args, **fixed_args):
         self._fixed_args = fixed_args
         self._fixed_args.setdefault('kappa', np.ones(n_bases)/n_bases)
+        self._fixed_args.setdefault('tau', np.arange(n_bases))
         self.n_bases = n_bases
         super(InfluenceKernel, self).__init__(*args)
+
+    def get_param(self, key, fallback=None, **kwargs):
+        new_kwargs = dict()
+        new_kwargs.update(self._fixed_args, **kwargs)
+        return new_kwargs.get(key, fallback)
 
     def majorant(
             self,
@@ -51,45 +57,39 @@ class InfluenceKernel(object):
             self,
             t,
             *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau', [])
-        kappa = new_kwargs.pop('kappa', [])
+        tau = self.get_param('tau', **kwargs)
+        kappa = self.get_param('kappa', **kwargs)
         return getattr(
             self, '_majorant', self._kernel
         )(
             t=np.reshape(t, (-1, 1)),
             tau=np.reshape(tau, (1, -1)),
-            *args, **new_kwargs
+            *args, **kwargs
         ) * np.reshape(kappa, (1, -1))
 
     def call_each(
             self,
             t,
             *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau', [])
-        kappa = new_kwargs.pop('kappa', [])
+        tau = self.get_param('tau', **kwargs)
+        kappa = self.get_param('kappa', **kwargs)
 
         return self._kernel(
             t=np.reshape(t, (-1, 1)),
             tau=np.reshape(tau, (1, -1)),
-            *args, **new_kwargs
+            *args, **kwargs
         ) * np.reshape(kappa, (1, -1))
 
     def integrate_each(
             self,
             t,
             *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        tau = new_kwargs.pop('tau', [])
-        kappa = new_kwargs.pop('kappa', [])
+        tau = self.get_param('tau', **kwargs)
+        kappa = self.get_param('kappa', **kwargs)
         return self._integrate(
             t=np.reshape(t, (-1, 1)),
             tau=np.reshape(tau, (1, -1)),
-            *args, **new_kwargs
+            *args, **kwargs
         ) * np.reshape(kappa, (1, -1))
 
 
@@ -132,33 +132,6 @@ class MaxwellKernel(InfluenceKernel):
                 self._kernel(t, tau=tau, *args, **kwargs)
             ]
         )
-
-
-class ConstKernel(InfluenceKernel):
-    """
-    Constant rate.
-    This is presumed to be for background rate modelling.
-    """
-    def __init__(
-            self,
-            *args,
-            **fixed_args
-            ):
-        super(ConstKernel, self).__init__(
-            n_bases=0,
-            *args, **fixed_args)
-
-    def __call__(self, t, *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        mu = new_kwargs.pop('mu', 0.0)
-        return np.ones_like(t) * mu
-
-    def integrate(self, t, *args, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        mu = new_kwargs.pop('mu', 0.0)
-        return t * mu
 
 
 class GenericKernel(InfluenceKernel):
