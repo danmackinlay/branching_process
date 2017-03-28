@@ -7,9 +7,8 @@ from .influence import InfluenceKernel
 have_autograd = False
 
 try:
-    import autograd
-    have_autograd = True
     import autograd.numpy as np
+    have_autograd = True
 except ImportError as e:
     import numpy as np
 
@@ -27,7 +26,7 @@ class BackgroundKernel(InfluenceKernel):
         # super(BackgroundKernel, self).__init__(*args)
 
 
-class ConstKernel(InfluenceKernel):
+class ConstKernel(BackgroundKernel):
     """
     Constant rate.
     This is presumably for background rate modelling.
@@ -42,11 +41,11 @@ class ConstKernel(InfluenceKernel):
             *args, **fixed_args)
 
     def __call__(self, t, *args, **kwargs):
-        mu = self.get_param('mu', **kwargs)
+        mu = self.get_params(**kwargs)['mu']
         return np.ones_like(t) * mu
 
     def integrate(self, t, *args, **kwargs):
-        mu = self.get_param('mu', **kwargs)
+        mu = self.get_params(**kwargs)['mu']
         return t * mu
 
 
@@ -76,7 +75,7 @@ class LinearStepKernel(BackgroundKernel):
         """
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
-        mu = self.get_param('kappa', 0.0, **kwargs)
+        mu = self.get_param('mu', 0.0, **kwargs)
         kappa = np.maximum(kappa, -mu)
         t = np.reshape(t, (-1, 1))
         each = (
@@ -91,7 +90,7 @@ class LinearStepKernel(BackgroundKernel):
     def integrate(self, t, *args, **kwargs):
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
-        mu = self.get_param('kappa', 0.0, **kwargs)
+        mu = self.get_param('mu', 0.0, **kwargs)
         kappa = np.maximum(kappa, -mu)
         t = np.reshape(t, (-1, 1))
         delta = np.diff(tau)
@@ -109,7 +108,7 @@ class LinearStepKernel(BackgroundKernel):
 
     def majorant(self, t, *args, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
-        mu = self.get_param('kappa', 0.0, **kwargs)
+        mu = self.get_param('mu', 0.0, **kwargs)
         kappa = np.maximum(kappa, -mu)
         return np.ones_like(t) * (mu + np.amax(kappa))
 

@@ -19,6 +19,7 @@ except ImportError as e:
 
 from scipy.stats import gaussian_kde
 from . import influence
+from . import background
 
 
 def _as_mu_args(mu=None, omega=None, **kwargs):
@@ -72,7 +73,7 @@ def lam_hawkes(
     Memory-hungry per default; could be improve with numba.
     """
     phi_kernel = influence.as_influence_kernel(phi_kernel)
-    mu_kernel = influence.as_influence_kernel(mu_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
 
 
@@ -153,7 +154,7 @@ def big_lam_hawkes(
     this is only available in a vectorised high-memory version.
     """
     phi_kernel = influence.as_influence_kernel(phi_kernel)
-    mu_kernel = influence.as_influence_kernel(mu_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
     mu_kwargs = _as_mu_args(
         mu=mu,
@@ -185,7 +186,7 @@ def loglik(
         eval_ts=None,
         **kwargs):
     phi_kernel = influence.as_influence_kernel(phi_kernel)
-    mu_kernel = influence.as_influence_kernel(mu_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
 
     if t_end is None:
         t_end = ts[-1]

@@ -22,9 +22,14 @@ class InfluenceKernel(object):
         super(InfluenceKernel, self).__init__(*args)
 
     def get_param(self, key, fallback=None, **kwargs):
-        new_kwargs = dict()
-        new_kwargs.update(self._fixed_args, **kwargs)
-        return new_kwargs.get(key, fallback)
+        return self.get_params(**kwargs).get(key, fallback)
+
+    def get_params(self, **kwargs):
+        new_kwargs = dict(**self._fixed_args)
+        for key, val in kwargs.items():
+            if val is not None:
+                new_kwargs[key] = val
+        return new_kwargs
 
     def majorant(
             self,
@@ -57,40 +62,37 @@ class InfluenceKernel(object):
             self,
             t,
             *args, **kwargs):
-        tau = self.get_param('tau', **kwargs)
-        kappa = self.get_param('kappa', **kwargs)
+        params = self.get_params(**kwargs)
+        params['tau'] = np.reshape(params['tau'], (1, -1))
         return getattr(
             self, '_majorant', self._kernel
         )(
             t=np.reshape(t, (-1, 1)),
-            tau=np.reshape(tau, (1, -1)),
-            *args, **kwargs
-        ) * np.reshape(kappa, (1, -1))
+            *args, **params
+        ) * np.reshape(params['kappa'], (1, -1))
 
     def call_each(
             self,
             t,
             *args, **kwargs):
-        tau = self.get_param('tau', **kwargs)
-        kappa = self.get_param('kappa', **kwargs)
+        params = self.get_params(**kwargs)
+        params['tau'] = np.reshape(params['tau'], (1, -1))
 
         return self._kernel(
             t=np.reshape(t, (-1, 1)),
-            tau=np.reshape(tau, (1, -1)),
-            *args, **kwargs
-        ) * np.reshape(kappa, (1, -1))
+            *args, **params
+        ) * np.reshape(params['kappa'], (1, -1))
 
     def integrate_each(
             self,
             t,
             *args, **kwargs):
-        tau = self.get_param('tau', **kwargs)
-        kappa = self.get_param('kappa', **kwargs)
+        params = self.get_params(**kwargs)
+        params['tau'] = np.reshape(params['tau'], (1, -1))
         return self._integrate(
             t=np.reshape(t, (-1, 1)),
-            tau=np.reshape(tau, (1, -1)),
-            *args, **kwargs
-        ) * np.reshape(kappa, (1, -1))
+            *args, **params
+        ) * np.reshape(params['kappa'], (1, -1))
 
 
 class ExpKernel(InfluenceKernel):
@@ -161,9 +163,6 @@ def as_influence_kernel(
         ):
     if hasattr(function, 'majorant'):
         return function
-    elif not callable(function):
-        # a number or None?
-        return ConstKernel(mu=function or 0.0)
     else:
         # a function, but not a kernel
         return GenericKernel(
