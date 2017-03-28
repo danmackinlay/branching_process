@@ -21,6 +21,28 @@ from scipy.stats import gaussian_kde
 from . import influence
 
 
+def _as_mu_args(mu=None, omega=None, **kwargs):
+    """
+    utility function to convert model arguments to kernel arguments
+    """
+    kwargs = dict(mu=mu, **kwargs)
+    if omega is not None:
+        kwargs['kappa'] = omega
+    if mu is not None:
+        kwargs['mu'] = omega
+    return kwargs
+
+
+def _as_phi_args(kappa=None, tau=None, **kwargs):
+    """
+    utility function to convert model arguments to kernel arguments
+    """
+    kwargs = dict(kappa=kappa, **kwargs)
+    if tau is not None:
+        kwargs['tau'] = tau
+    return kwargs
+
+
 def lam(
         ts,
         eval_ts=None,
@@ -44,8 +66,6 @@ def lam_hawkes(
         mu_kernel=0.0,
         eval_ts=None,
         max_floats=1e8,
-        phi_kwargs={},
-        mu_kwargs={},
         **kwargs):
     """
     Intensity of Hawkes process given time series and parameters.
@@ -54,10 +74,7 @@ def lam_hawkes(
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = influence.as_influence_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
-    mu_kwargs = dict(
-        mu=mu,
-        **mu_kwargs
-    )
+
 
     if eval_ts is None:
         eval_ts = ts
@@ -71,6 +88,13 @@ def lam_hawkes(
             phi_kwargs=phi_kwargs,
             mu_kwargs=mu_kwargs
         )
+    mu_kwargs = _as_mu_args(
+        mu=mu,
+        **kwargs
+    )
+    phi_kwargs = _as_phi_args(
+        **kwargs
+    )
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
     endo = phi_kernel(
@@ -89,8 +113,6 @@ def _lam_hawkes_lite(
         mu_kernel,
         phi_kernel,
         t_start=0.0,
-        phi_kwargs={},
-        mu_kwargs={},
         **kwargs):
     """
     Intensity of Hawkes process given time series and parameters.
@@ -101,6 +123,13 @@ def _lam_hawkes_lite(
     endo = np.zeros_like(eval_ts)
     deltas = np.zeros_like(ts)
     mask = np.zeros_like(ts)
+    mu_kwargs = _as_mu_args(
+        mu=mu,
+        **kwargs
+    )
+    phi_kwargs = _as_phi_args(
+        **kwargs
+    )
     for i in range(eval_ts.size):
         deltas[:] = eval_ts[i] - ts
         mask[:] = deltas > 0.0
@@ -116,8 +145,6 @@ def big_lam_hawkes(
         phi_kernel,
         mu_kernel=1.0,
         t_start=0.0,
-        phi_kwargs={},
-        mu_kwargs={},
         **kwargs
         ):
     """
@@ -128,9 +155,12 @@ def big_lam_hawkes(
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = influence.as_influence_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
-    mu_kwargs = dict(
+    mu_kwargs = _as_mu_args(
         mu=mu,
-        **mu_kwargs
+        **kwargs
+    )
+    phi_kwargs = _as_phi_args(
+        **kwargs
     )
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
@@ -153,14 +183,10 @@ def loglik(
         t_start=0.0,
         t_end=None,
         eval_ts=None,
-        omega=[],
-        mu_kwargs={},
-        phi_kwargs={}):
+        **kwargs):
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = influence.as_influence_kernel(mu_kernel)
 
-    if phi_kernel is None:
-        phi_kernel = phi_kernel
     if t_end is None:
         t_end = ts[-1]
     # as an optimisation we allow passing in an eval_ts array,
@@ -177,8 +203,7 @@ def loglik(
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
         eval_ts=eval_ts,
-        phi_kwargs=phi_kwargs,
-        mu_kwargs=mu_kwargs
+        **kwargs
     )
     big_lam = big_lam_hawkes(
         ts=ts,
@@ -187,8 +212,7 @@ def loglik(
         mu_kernel=mu_kernel,
         t_start=t_start,
         eval_ts=np.array(t_end),
-        phi_kwargs=phi_kwargs,
-        mu_kwargs=mu_kwargs
+        **kwargs
     )
 
     return np.sum(np.log(lam)) - big_lam
