@@ -10,12 +10,14 @@ Poisson point process penalised likelihood regression.
 try:
     import autograd
     import autograd.numpy as np
-    import autograd.scipy as sp
+    # import autograd.scipy as sp
     have_autograd = True
 except ImportError as e:
     import numpy as np
-    import scipy as sp
+    # import scipy as sp
     have_autograd = False
+
+from scipy.optimize import minimize
 
 from . import influence
 from . import model
@@ -90,9 +92,6 @@ class ContinuousExact(object):
     def negloglik(
             self,
             mu=1.0,
-            kappa=0.0,
-            tau=None,
-            omega=None,
             **kwargs):
 
         return -model.loglik(
@@ -135,30 +134,12 @@ class ContinuousExact(object):
 
     def objective(
             self,
-            mu=1.0,
-            kappa=0.0,
-            tau=None,
-            omega=None,
-            pi_kappa=0.0,
-            pi_omega=1e-8,
             **kwargs):
 
         g_negloglik = self.negloglik(
-            mu=mu,
-            kappa=kappa,
-            tau=tau,
-            omega=omega,
-            pi_kappa=pi_kappa,
-            pi_omega=pi_omega,
             **kwargs
         )
         g_penalty = self.penalty(
-            mu=mu,
-            kappa=kappa,
-            tau=tau,
-            omega=omega,
-            pi_kappa=pi_kappa,
-            pi_omega=pi_omega,
             **kwargs
         )
         penalty_dominated = np.abs(
@@ -179,11 +160,18 @@ class ContinuousExact(object):
             fit_omega=False,
             t_start=0.0,
             t_end=None,
-            param_vector=None,):
+            param_vector=None,
+            **kwargs):
 
         self._t_start = t_start
         self._t_end = t_end or ts[-1]
         self._ts = ts
+        self._n_ts = np.sum(ts[
+            np.logical_and(
+                ts >= self._t_start,
+                ts < self._t_end
+            )
+        ])
         # Full data likelihood must evaluate at the t_end also
         if ts[-1] < self._t_end:
             _eval_ts = np.append(
@@ -224,32 +212,7 @@ class ContinuousExact(object):
         self.n_tau = self.n_phi_bases * self._fit_tau
         self.n_omega = self.n_mu_bases * self._fit_omega
 
-        if param_vector is None:
-            param_vector = self._pack()
-        self._param_vector = param_vector
-
-        self._param_floor = self._pack(
-            mu=0.0,  # unused?
-            mu_kwargs=dict(
-                kappa=0.0
-            ),
-            phi_kwargs=dict(
-                kappa=0.0
-            )
-        )
-        self._grad_mu = autograd.grad(
-            self._negloglik_packed, 0)
-        self._grad_kappa = autograd.grad(
-            self._negloglik_packed, 1)
-        self._grad_tau = autograd.grad(
-            self._negloglik_packed, 2)
-        self._grad_omega = autograd.grad(
-            self._negloglik_packed, 3)
-        # self._hessian_diag_negloglik = autograd.elementwise_grad(
-        #     self._grad_negloglik, 0)
-
-    def _teardown_graphs(
-            self):
+    def _teardown_graphs(self):
 
         del(self._ts)
         del(self._eval_ts)
@@ -277,39 +240,150 @@ class ContinuousExact(object):
             fit_omega=fit_omega,
             **kwargs
         )
-
-        param_kwargs = dict()
-        for k in [
-            'mu', 'tau', 'kappa', 'omega', 'pi_kappa', 'pi_omega'
-        ]:
-            v = kwargs.get(k, None)
-            if v is not None:
-                param_kwargs[k] = v
         return self._fit(
-            **param_kwargs,
             **kwargs
         )
 
     def _fit(
             self,
-            mu=1.0,
-            kappa=0.0,
+            mu=None,  # ignored
+            kappa=None,
             tau=None,
             omega=None,
             pi_kappa=0.0,
             pi_omega=1e-8,
             max_steps=10,
+            step_iter=10,
             eps=1e-8,
             **kwargs
             ):
         """
-        fit by Truncated Newton in each coordinate
+        fit by Truncated Newton in each coordinate group
         """
+        if tau is None:
+            tau = np.arange(self.n_tau)
+        if omega is None:
+            omega = np.zeros(self.n_omega)
+        if kappa is None:
+            kappa = np.ones(self.n_phi_bases)
+
+        # def obj_mu(mu):
+        #     return self.objective(
+        #         mu=mu,
+        #         kappa=kappa,
+        #         tau=tau,
+        #         omega=omega,
+        #         pi_kappa=pi_kappa,
+        #         pi_omega=pi_omega)
+        #
+        # grad_mu = autograd.value_and_grad(
+        #     obj_mu, 0)
+
+        def obj_kappa(kappa):
+            return self.objective(
+                mu=mu,
+                kappa=kappa,
+                tau=tau,
+                omega=omega,
+                pi_kappa=pi_kappa,
+                pi_omega=pi_omega)
+
+        grad_kappa = autograd.value_and_grad(
+            obj_kappa, 0)
+        kappa_bounds = [(0, 1)] * self.n_phi_bases
+
+        def obj_tau(tau):
+            return self.objective(
+                mu=mu,
+                kappa=kappa,
+                tau=tau,
+                omega=omega,
+                pi_kappa=pi_kappa,
+                pi_omega=pi_omega)
+
+        grad_tau = autograd.value_and_grad(
+            obj_tau, 0)
+        tau_bounds = [(0, None)] * self.n_tau
+
+        def obj_omega(mu):
+            return self.objective(
+                mu=mu,
+                kappa=kappa,
+                tau=tau,
+                omega=omega,
+                pi_kappa=pi_kappa,
+                pi_omega=pi_omega)
+
+        grad_omega = autograd.value_and_grad(
+            obj_omega, 0)
+
+        # self._hessian_diag_negloglik = autograd.elementwise_grad(
+        #     self._grad_negloglik, 0)
 
         for i in range(max_steps):
-            self._debug_print(i, 'param', mu, tau, kappa, omega, 'grad', g)
-            res = scipy.minimize(
+            fit = {}
+            if self._fit_tau:
+                res = minimize(
+                    grad_tau,
+                    tau,
+                    method='L-BFGS-B',  # ?
+                    jac=True,
+                    bounds=tau_bounds,
+                    callback=lambda x: self._debug_print('tau', x),
+                    options=dict(
+                        maxiter=step_iter,
+                        disp=self.debug
+                    )
+                )
+                tau = res.x
+                fit['tau'] = tau
+            res = minimize(
+                grad_kappa,
+                kappa,
+                method='TNC',
+                jac=True,
+                bounds=kappa_bounds,
+                callback=lambda x: self._debug_print('kappa', x),
+                options=dict(
+                    maxiter=step_iter,
+                    disp=self.debug
+                )
+            )
+            kappa = res.x
+            fit['kappa'] = kappa
 
+            if self._fit_omega:
+                omega_bounds = [(0, None)] * self.n_omega
+                res = minimize(
+                    grad_omega,
+                    omega,
+                    method='TNC',
+                    jac=True,
+                    bounds=omega_bounds,
+                    callback=lambda x: self._debug_print('omega', x),
+                    options=dict(
+                        maxiter=step_iter,
+                        disp=self.debug
+                    )
+                )
+                omega = res.x
+                fit['omega'] = omega
+
+            # one-step mu update
+            big_lam = model.big_lam_hawkes(
+                mu=0.0,
+                ts=self._ts,
+                eval_ts=self._eval_ts,
+                phi_kernel=self.phi_kernel,
+                mu_kernel=self.mu_kernel,
+                **fit,
+                **kwargs
+            )
+            mu = (self._n_ts - big_lam)/(self._t_end-self._t_start)
+            self._debug_print('mu', mu)
+            fit['mu'] = mu
+
+        return fit
 
     # def _fit_path(
     #         self,
