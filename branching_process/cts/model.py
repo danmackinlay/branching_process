@@ -30,7 +30,7 @@ def _as_mu_args(mu=None, omega=None, **kwargs):
     if omega is not None:
         kwargs['kappa'] = omega
     if mu is not None:
-        kwargs['mu'] = omega
+        kwargs['mu'] = mu
     return kwargs
 
 
@@ -62,7 +62,6 @@ def lam(
 
 def lam_hawkes(
         ts,
-        mu,
         phi_kernel=0.0,
         mu_kernel=0.0,
         eval_ts=None,
@@ -70,12 +69,9 @@ def lam_hawkes(
         **kwargs):
     """
     Intensity of Hawkes process given time series and parameters.
-    Memory-hungry per default; could be improve with numba.
+    Memory-hungry per default; could be improved with numba.
     """
-    phi_kernel = influence.as_influence_kernel(phi_kernel)
-    mu_kernel = background.as_background_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
-
 
     if eval_ts is None:
         eval_ts = ts
@@ -86,11 +82,11 @@ def lam_hawkes(
             phi_kernel=phi_kernel,
             mu_kernel=mu_kernel,
             eval_ts=eval_ts,
-            phi_kwargs=phi_kwargs,
-            mu_kwargs=mu_kwargs
+            **kwargs
         )
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
     mu_kwargs = _as_mu_args(
-        mu=mu,
         **kwargs
     )
     phi_kwargs = _as_phi_args(
@@ -125,7 +121,6 @@ def _lam_hawkes_lite(
     deltas = np.zeros_like(ts)
     mask = np.zeros_like(ts)
     mu_kwargs = _as_mu_args(
-        mu=mu,
         **kwargs
     )
     phi_kwargs = _as_phi_args(
