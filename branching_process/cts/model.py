@@ -86,12 +86,8 @@ def lam_hawkes(
         )
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = background.as_background_kernel(mu_kernel)
-    mu_kwargs = _as_mu_args(
-        **kwargs
-    )
-    phi_kwargs = _as_phi_args(
-        **kwargs
-    )
+    mu_kwargs = _as_mu_args(**kwargs)
+    phi_kwargs = _as_phi_args(**kwargs)
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
     endo = phi_kernel(
@@ -120,12 +116,8 @@ def _lam_hawkes_lite(
     endo = np.zeros_like(eval_ts)
     deltas = np.zeros_like(ts)
     mask = np.zeros_like(ts)
-    mu_kwargs = _as_mu_args(
-        **kwargs
-    )
-    phi_kwargs = _as_phi_args(
-        **kwargs
-    )
+    mu_kwargs = _as_mu_args(**kwargs)
+    phi_kwargs = _as_phi_args(**kwargs)
     for i in range(eval_ts.size):
         deltas[:] = eval_ts[i] - ts
         mask[:] = deltas > 0.0
@@ -151,13 +143,8 @@ def big_lam_hawkes(
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = background.as_background_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
-    mu_kwargs = _as_mu_args(
-        mu=mu,
-        **kwargs
-    )
-    phi_kwargs = _as_phi_args(
-        **kwargs
-    )
+    mu_kwargs = _as_mu_args(mu=mu, **kwargs)
+    phi_kwargs = _as_phi_args(mu=mu, **kwargs)
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
     big_endo = phi_kernel.integrate(
@@ -175,7 +162,6 @@ def loglik(
         ts,
         phi_kernel=None,
         mu_kernel=1.0,
-        mu=1.0,
         t_start=0.0,
         t_end=None,
         eval_ts=None,
@@ -195,7 +181,6 @@ def loglik(
 
     lam = lam_hawkes(
         ts=ts,
-        mu=mu,
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
         eval_ts=eval_ts,
@@ -203,7 +188,6 @@ def loglik(
     )
     big_lam = big_lam_hawkes(
         ts=ts,
-        mu=mu,
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
         t_start=t_start,

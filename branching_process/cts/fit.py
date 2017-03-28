@@ -20,6 +20,7 @@ except ImportError as e:
 from scipy.optimize import minimize
 
 from . import influence
+from . import background
 from . import model
 
 
@@ -91,13 +92,11 @@ class ContinuousExact(object):
 
     def negloglik(
             self,
-            mu=1.0,
             **kwargs):
 
         return -model.loglik(
             ts=self._ts,
             eval_ts=self._eval_ts,
-            mu=mu,
             phi_kernel=self.phi_kernel,
             mu_kernel=self.mu_kernel,
             **kwargs
@@ -198,12 +197,12 @@ class ContinuousExact(object):
         self.n_phi_bases = phi_kernel.n_bases
         if mu_kernel is None:
             if n_mu_bases > 0:
-                mu_kernel = influence.LinearStepKernel(
+                mu_kernel = background.LinearStepKernel(
                     t_start=self._t_start,
                     t_end=self._t_end,
                     n_bases=n_mu_bases)
             else:
-                mu_kernel = influence.ConstKernel()
+                mu_kernel = background.ConstKernel()
         self.mu_kernel = mu_kernel
         self.n_mu_bases = n_mu_bases
 
@@ -246,7 +245,7 @@ class ContinuousExact(object):
 
     def _fit(
             self,
-            mu=None,  # ignored
+            mu=None,  # ignored?
             kappa=None,
             tau=None,
             omega=None,
@@ -261,11 +260,16 @@ class ContinuousExact(object):
         fit by Truncated Newton in each coordinate group
         """
         if tau is None:
-            tau = self.phi_kernel.tau()
-        if omega is None and self._fit_omega:
-            omega = self.phi_kernel.kappa()
+            tau = self.phi_kernel.get_param('tau')
+        if omega is None:
+            omega = self.mu_kernel.get_param('kappa', 0.0)
         if kappa is None:
-            kappa = np.ones(self.n_phi_bases)
+            kappa = self.phi_kernel.get_param('kappa')
+        if mu is None:
+            mu = self.mu_kernel.get_param(
+                'kappa',
+                self._n_ts/(self._t_end - self._t_start)
+            )
 
         # def obj_mu(mu):
         #     return self.objective(
