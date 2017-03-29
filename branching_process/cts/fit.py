@@ -439,9 +439,9 @@ class ContinuousExact(object):
             mu = res.x
             new_fit['mu'] = mu
 
-            fit.update(**new_fit)
+            fit.update(new_fit)
+            self.params.update(fit)
 
-        self.params.update(fit)
         return fit
 
     # def _fit_path(
