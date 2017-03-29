@@ -302,18 +302,29 @@ class ContinuousExact(object):
         # grad_mu = autograd.value_and_grad(
         #     obj_mu, 0)
 
-        def obj_kappa(kappa):
-            self._debug_tee('kappa', kappa)
-            return self._debug_tee('kappa_obj', self.objective(
+        def obj_kappa(x):
+            self._debug_print('objkappabrain', dict(
                 mu=mu,
                 kappa=kappa,
+                kappa2=x,
                 tau=tau,
                 omega=omega,
                 pi_kappa=pi_kappa,
-                pi_omega=pi_omega))
+                pi_omega=pi_omega
+            ))
+            return self.objective(
+                mu=mu,
+                kappa=x,
+                tau=tau,
+                omega=omega,
+                pi_kappa=pi_kappa,
+                pi_omega=pi_omega)
 
-        grad_kappa = autograd.value_and_grad(
+        grad_kappa_ = autograd.value_and_grad(
             obj_kappa, 0)
+        def grad_kappa(x):
+            self._debug_print('grad_kappa_p', x)
+            return self._debug_tee('grad_kappa_v', grad_kappa_(x))
         kappa_bounds = [(0, 1)] * self.n_phi_bases
 
         def obj_tau(x):
@@ -360,7 +371,7 @@ class ContinuousExact(object):
                     method='L-BFGS-B',  # ?
                     jac=True,
                     bounds=tau_bounds,
-                    callback=lambda x: self._debug_print('tau_fit', x),
+                    callback=lambda x: self._debug_tee('tau_fit', x),
                     options=dict(
                         maxiter=step_iter,
                         disp=self.debug
@@ -373,6 +384,7 @@ class ContinuousExact(object):
                 grad_kappa,
                 kappa,
                 method='TNC',
+                # method='L-BFGS-B',
                 jac=True,
                 bounds=kappa_bounds,
                 callback=lambda x: self._debug_tee('kappa_fit', x),
@@ -382,6 +394,8 @@ class ContinuousExact(object):
                 )
             )
             kappa = res.x
+            from IPython.core.debugger import Tracer; Tracer()()
+
             new_fit['kappa'] = kappa
 
             if self._fit_omega:
