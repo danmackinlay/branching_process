@@ -35,6 +35,11 @@ class ContinuousExact(object):
         if self.debug:
             print(*args, **kwargs)
 
+    def _debug_tee(self, label, obj):
+        if self.debug:
+            print(label, obj)
+        return obj
+
     def _pack(
             self,
             mu=1.0,
@@ -197,7 +202,7 @@ class ContinuousExact(object):
         self.n_phi_bases = phi_kernel.n_bases
         if mu_kernel is None:
             if n_mu_bases > 0:
-                mu_kernel = background.LinearStepKernel(
+                mu_kernel = background.AdditiveStepKernel(
                     t_start=self._t_start,
                     t_end=self._t_end,
                     n_bases=n_mu_bases)
@@ -251,13 +256,13 @@ class ContinuousExact(object):
             omega=None,
             pi_kappa=0.0,
             pi_omega=1e-8,
-            max_steps=10,
-            step_iter=10,
+            max_steps=3,
+            step_iter=15,
             eps=1e-8,
             **kwargs
             ):
         """
-        fit by Truncated Newton in each coordinate group
+        fit by truncated Newton in each coordinate group
         """
         if tau is None:
             tau = self.phi_kernel.get_param('tau')
@@ -284,39 +289,42 @@ class ContinuousExact(object):
         #     obj_mu, 0)
 
         def obj_kappa(kappa):
-            return self.objective(
+            self._debug_tee('kappa', kappa)
+            return self._debug_tee('kappa_obj', self.objective(
                 mu=mu,
                 kappa=kappa,
                 tau=tau,
                 omega=omega,
                 pi_kappa=pi_kappa,
-                pi_omega=pi_omega)
+                pi_omega=pi_omega))
 
         grad_kappa = autograd.value_and_grad(
             obj_kappa, 0)
         kappa_bounds = [(0, 1)] * self.n_phi_bases
 
         def obj_tau(tau):
-            return self.objective(
+            self._debug_tee('tau', tau)
+            return self._debug_tee('tau_obj', self.objective(
                 mu=mu,
                 kappa=kappa,
                 tau=tau,
                 omega=omega,
                 pi_kappa=pi_kappa,
-                pi_omega=pi_omega)
+                pi_omega=pi_omega))
 
         grad_tau = autograd.value_and_grad(
             obj_tau, 0)
         tau_bounds = [(0, None)] * self.n_tau
 
-        def obj_omega(mu):
-            return self.objective(
+        def obj_omega(omega):
+            self._debug_tee('omega', omega)
+            return self._debug_tee('omega_obj', self.objective(
                 mu=mu,
                 kappa=kappa,
                 tau=tau,
                 omega=omega,
                 pi_kappa=pi_kappa,
-                pi_omega=pi_omega)
+                pi_omega=pi_omega))
 
         grad_omega = autograd.value_and_grad(
             obj_omega, 0)
@@ -333,7 +341,7 @@ class ContinuousExact(object):
                     method='L-BFGS-B',  # ?
                     jac=True,
                     bounds=tau_bounds,
-                    callback=lambda x: self._debug_print('tau', x),
+                    callback=lambda x: self._debug_print('tau_fit', x),
                     options=dict(
                         maxiter=step_iter,
                         disp=self.debug
@@ -347,7 +355,7 @@ class ContinuousExact(object):
                 method='TNC',
                 jac=True,
                 bounds=kappa_bounds,
-                callback=lambda x: self._debug_print('kappa', x),
+                callback=lambda x: self._debug_print('kappa_fit', x),
                 options=dict(
                     maxiter=step_iter,
                     disp=self.debug
@@ -364,7 +372,7 @@ class ContinuousExact(object):
                     method='TNC',
                     jac=True,
                     bounds=omega_bounds,
-                    callback=lambda x: self._debug_print('omega', x),
+                    callback=lambda x: self._debug_print('omega_fit', x),
                     options=dict(
                         maxiter=step_iter,
                         disp=self.debug
@@ -373,18 +381,21 @@ class ContinuousExact(object):
                 omega = res.x
                 fit['omega'] = omega
 
-            # one-step mu update
+            # one-step mu update is possible for known noise structure
+            # e.g. additive but not in general
             big_lam = model.big_lam_hawkes(
                 mu=0.0,
                 ts=self._ts,
-                eval_ts=self._eval_ts,
+                eval_ts=np.array([self._t_end, self._t_end]),
                 phi_kernel=self.phi_kernel,
                 mu_kernel=self.mu_kernel,
                 **fit,
                 **kwargs
             )
-            mu = (self._n_ts - big_lam)/(self._t_end-self._t_start)
-            self._debug_print('mu', mu)
+            big_lam_inc = big_lam[1] - big_lam[0]
+
+            mu = (self._n_ts - big_lam_inc)/(self._t_end-self._t_start)
+            self._debug_print('mu_fit', mu)
             fit['mu'] = mu
 
         return fit
