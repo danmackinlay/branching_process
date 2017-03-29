@@ -139,35 +139,6 @@ class ContinuousExact(object):
             np.abs(omega) * pi_omega
         )
 
-    def objective(
-            self,
-            **kwargs):
-        loss_negloglik = self.negloglik_loss(
-            **kwargs
-        )
-        loss_penalty = self.penalty(
-            **kwargs
-        )
-        # self._debug_print('insobj', loss_negloglik, loss_penalty)
-        return (loss_negloglik + loss_penalty)
-
-    # def grad_objective(
-    #         self,
-    #         **kwargs):
-    #     g_negloglik = self.g_negloglik(
-    #         **kwargs
-    #     )
-    #     g_penalty = self.g_penalty(
-    #         **kwargs
-    #     )
-    #     # this isn't quite right - only applies at 0
-    #     penalty_dominated = np.abs(
-    #         g_negloglik
-    #     ) < (
-    #         g_penalty
-    #     )
-    #     return (g_negloglik + g_penalty) * penalty_dominated
-
     def _setup_graphs(
             self,
             ts,
@@ -304,6 +275,35 @@ class ContinuousExact(object):
             pi_kappa=pi_kappa,
         )
 
+    def objective(
+            self,
+            **kwargs):
+        loss_negloglik = self.negloglik_loss(
+            **kwargs
+        )
+        loss_penalty = self.penalty(
+            **kwargs
+        )
+        # self._debug_print('insobj', loss_negloglik, loss_penalty)
+        return (loss_negloglik + loss_penalty)
+
+    # def grad_objective(
+    #         self,
+    #         **kwargs):
+    #     g_negloglik = self.g_negloglik(
+    #         **kwargs
+    #     )
+    #     g_penalty = self.g_penalty(
+    #         **kwargs
+    #     )
+    #     # this isn't quite right - only applies at 0
+    #     penalty_dominated = np.abs(
+    #         g_negloglik
+    #     ) < (
+    #         g_penalty
+    #     )
+    #     return (g_negloglik + g_penalty) * penalty_dominated
+
     def obj_mu(self, x):
         return self.objective(
             mu=x,
@@ -341,13 +341,13 @@ class ContinuousExact(object):
             pi_omega=self.params['pi_omega'])
 
     def _setup_grad(self):
-        self._grad_mu = autograd.value_and_grad(
+        self._grad_mu = autograd.grad(
             self.obj_mu, 0)
         self._grad_kappa = autograd.grad(
             self.obj_kappa, 0)
-        self._grad_tau = autograd.value_and_grad(
+        self._grad_tau = autograd.grad(
             self.obj_tau, 0)
-        self._grad_omega = autograd.value_and_grad(
+        self._grad_omega = autograd.grad(
             self.obj_omega, 0)
 
     def _fit(
@@ -424,20 +424,21 @@ class ContinuousExact(object):
 
             # one-step mu update is possible for known noise structure
             # e.g. additive, but not in general
-            big_lam = model.big_lam_hawkes(
-                mu=0.0,
-                ts=self._ts,
-                eval_ts=np.array([self._t_start, self._t_end]),
-                phi_kernel=self.phi_kernel,
-                mu_kernel=self.mu_kernel,
-                **new_fit,
-                **kwargs
+            res = minimize(
+                self.obj_mu,
+                fit['mu'],
+                method='TNC',
+                jac=self._grad_mu,
+                bounds=self._mu_bounds,
+                callback=lambda x: self._debug_tee('mu_fit', x),
+                options=dict(
+                    maxiter=step_iter,
+                    disp=self.debug
+                )
             )
-            big_lam_inc = big_lam[1] - big_lam[0]
-
-            mu = (self._n_ts - big_lam_inc)/(self._t_end-self._t_start)
-            self._debug_print('mu_fit', mu)
+            mu = res.x
             new_fit['mu'] = mu
+
             fit.update(**new_fit)
 
         self.params.update(fit)
