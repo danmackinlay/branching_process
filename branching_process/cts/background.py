@@ -16,12 +16,11 @@ except ImportError as e:
 class BackgroundKernel(InfluenceKernel):
     def __init__(
             self,
-            n_bases=1,
+            n_bases=0,
             kappa=None,
             *args, **fixed_args):
         self._fixed_args = fixed_args
-        if n_bases > 0:
-            self._fixed_args.setdefault('kappa', np.zeros(n_bases)/n_bases)
+        self._fixed_args.setdefault('kappa', np.ones(n_bases))
         self.n_bases = n_bases
         # super(BackgroundKernel, self).__init__(*args)
 
@@ -62,13 +61,13 @@ class AdditiveStepKernel(BackgroundKernel):
             **fixed_args
             ):
         self.t_end = t_end
-        super(AdditiveStepKernel, self).__init__(
-            n_bases=n_bases,
-            *args, **fixed_args)
-        self._fixed_args.setdefault(
+        fixed_args.setdefault(
             'tau',
             np.linspace(0, t_end, n_bases+1, endpoint=True)
         )
+        super(AdditiveStepKernel, self).__init__(
+            n_bases=n_bases,
+            *args, **fixed_args)
 
     def __call__(self, t, *args, **kwargs):
         """
@@ -126,13 +125,13 @@ class MultiplicativeStepKernel(BackgroundKernel):
             **fixed_args
             ):
         self.t_end = t_end
-        super(MultiplicativeStepKernel, self).__init__(
-            n_bases=n_bases,
-            *args, **fixed_args)
-        self._fixed_args.setdefault(
+        fixed_args.setdefault(
             'tau',
             np.linspace(0, t_end, n_bases+1, endpoint=True)
         )
+        super(AdditiveStepKernel, self).__init__(
+            n_bases=n_bases,
+            *args, **fixed_args)
 
     def __call__(self, t, *args, **kwargs):
         """

@@ -95,7 +95,7 @@ class ContinuousExact(object):
             ]
         return unpacked
 
-    def negloglik(
+    def negloglik_loss(
             self,
             **kwargs):
 
@@ -104,6 +104,8 @@ class ContinuousExact(object):
             eval_ts=self._eval_ts,
             phi_kernel=self.phi_kernel,
             mu_kernel=self.mu_kernel,
+            t_start=self._t_start,
+            t_end=self._t_end,
             **kwargs
         )
 
@@ -139,19 +141,31 @@ class ContinuousExact(object):
     def objective(
             self,
             **kwargs):
+        loss_negloglik = self.negloglik_loss(
+            **kwargs
+        )
+        loss_penalty = self.penalty(
+            **kwargs
+        )
+        self._debug_print('insobj', kwargs, loss_negloglik, loss_penalty)
+        return (loss_negloglik + loss_penalty)
 
-        g_negloglik = self.negloglik(
-            **kwargs
-        )
-        g_penalty = self.penalty(
-            **kwargs
-        )
-        penalty_dominated = np.abs(
-            g_negloglik
-        ) < (
-            g_penalty
-        )
-        return (g_negloglik + g_penalty) * penalty_dominated
+    # def grad_objective(
+    #         self,
+    #         **kwargs):
+    #     g_negloglik = self.g_negloglik(
+    #         **kwargs
+    #     )
+    #     g_penalty = self.g_penalty(
+    #         **kwargs
+    #     )
+    #     # this isn't quite right - only applies at 0
+    #     penalty_dominated = np.abs(
+    #         g_negloglik
+    #     ) < (
+    #         g_penalty
+    #     )
+    #     return (g_negloglik + g_penalty) * penalty_dominated
 
     def _setup_graphs(
             self,
@@ -267,18 +281,18 @@ class ContinuousExact(object):
         if tau is None:
             tau = self.phi_kernel.get_param('tau')
         if omega is None:
-            omega = self.mu_kernel.get_param('kappa', 0.0)
+            omega = self.mu_kernel.get_param('kappa')
         if kappa is None:
             kappa = self.phi_kernel.get_param('kappa')
         if mu is None:
             mu = self.mu_kernel.get_param(
-                'kappa',
+                'mu',
                 self._n_ts/(self._t_end - self._t_start)
             )
 
-        # def obj_mu(mu):
+        # def obj_mu(x):
         #     return self.objective(
-        #         mu=mu,
+        #         mu=x,
         #         kappa=kappa,
         #         tau=tau,
         #         omega=omega,
@@ -302,29 +316,27 @@ class ContinuousExact(object):
             obj_kappa, 0)
         kappa_bounds = [(0, 1)] * self.n_phi_bases
 
-        def obj_tau(tau):
-            self._debug_tee('tau', tau)
-            return self._debug_tee('tau_obj', self.objective(
+        def obj_tau(x):
+            return self.objective(
                 mu=mu,
                 kappa=kappa,
-                tau=tau,
+                tau=x,
                 omega=omega,
                 pi_kappa=pi_kappa,
-                pi_omega=pi_omega))
+                pi_omega=pi_omega)
 
         grad_tau = autograd.value_and_grad(
             obj_tau, 0)
         tau_bounds = [(0, None)] * self.n_tau
 
-        def obj_omega(omega):
-            self._debug_tee('omega', omega)
-            return self._debug_tee('omega_obj', self.objective(
+        def obj_omega(x):
+            return self.objective(
                 mu=mu,
                 kappa=kappa,
                 tau=tau,
-                omega=omega,
+                omega=x,
                 pi_kappa=pi_kappa,
-                pi_omega=pi_omega))
+                pi_omega=pi_omega)
 
         grad_omega = autograd.value_and_grad(
             obj_omega, 0)
@@ -332,8 +344,15 @@ class ContinuousExact(object):
         # self._hessian_diag_negloglik = autograd.elementwise_grad(
         #     self._grad_negloglik, 0)
 
+        fit = dict(
+            kappa=kappa,
+            tau=tau,
+            mu=mu,
+            omega=omega,
+        )
         for i in range(max_steps):
-            fit = {}
+            self._debug_print('fit', fit)
+            new_fit = {}
             if self._fit_tau:
                 res = minimize(
                     grad_tau,
@@ -348,21 +367,22 @@ class ContinuousExact(object):
                     )
                 )
                 tau = res.x
-                fit['tau'] = tau
+                new_fit['tau'] = tau
+
             res = minimize(
                 grad_kappa,
                 kappa,
                 method='TNC',
                 jac=True,
                 bounds=kappa_bounds,
-                callback=lambda x: self._debug_print('kappa_fit', x),
+                callback=lambda x: self._debug_tee('kappa_fit', x),
                 options=dict(
                     maxiter=step_iter,
                     disp=self.debug
                 )
             )
             kappa = res.x
-            fit['kappa'] = kappa
+            new_fit['kappa'] = kappa
 
             if self._fit_omega:
                 omega_bounds = [(0, None)] * self.n_omega
@@ -372,31 +392,32 @@ class ContinuousExact(object):
                     method='TNC',
                     jac=True,
                     bounds=omega_bounds,
-                    callback=lambda x: self._debug_print('omega_fit', x),
+                    callback=lambda x: self._debug_tee('omega_fit', x),
                     options=dict(
                         maxiter=step_iter,
                         disp=self.debug
                     )
                 )
                 omega = res.x
-                fit['omega'] = omega
+                new_fit['omega'] = omega
 
             # one-step mu update is possible for known noise structure
-            # e.g. additive but not in general
+            # e.g. additive, but not in general
             big_lam = model.big_lam_hawkes(
                 mu=0.0,
                 ts=self._ts,
                 eval_ts=np.array([self._t_end, self._t_end]),
                 phi_kernel=self.phi_kernel,
                 mu_kernel=self.mu_kernel,
-                **fit,
+                **new_fit,
                 **kwargs
             )
             big_lam_inc = big_lam[1] - big_lam[0]
 
             mu = (self._n_ts - big_lam_inc)/(self._t_end-self._t_start)
             self._debug_print('mu_fit', mu)
-            fit['mu'] = mu
+            new_fit['mu'] = mu
+            fit.update(**new_fit)
 
         return fit
 
