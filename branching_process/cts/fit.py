@@ -10,6 +10,7 @@ Poisson point process penalised likelihood regression.
 try:
     import autograd
     import autograd.numpy as np
+    from autograd.util import quick_grad_check, check_grads, nd, unary_nd
     # import autograd.scipy as sp
     have_autograd = True
 except ImportError as e:
@@ -147,7 +148,7 @@ class ContinuousExact(object):
         loss_penalty = self.penalty(
             **kwargs
         )
-        self._debug_print('insobj', kwargs, loss_negloglik, loss_penalty)
+        # self._debug_print('insobj', loss_negloglik, loss_penalty)
         return (loss_negloglik + loss_penalty)
 
     # def grad_objective(
@@ -285,9 +286,13 @@ class ContinuousExact(object):
         if kappa is None:
             kappa = self.phi_kernel.get_param('kappa')
         if mu is None:
+            # We'd like to choose mu=0 as a guess
+            # but this doesn't work for multiplicative background noise
+            # So we choose a low background intensity of the correct order
+            # of magnitude, so that kappa is not negative for the first round.
             mu = self.mu_kernel.get_param(
                 'mu',
-                self._n_ts/(self._t_end - self._t_start)
+                self._n_ts/(self._t_end - self._t_start) * 0.1
             )
 
         # def obj_mu(x):
@@ -303,15 +308,15 @@ class ContinuousExact(object):
         #     obj_mu, 0)
 
         def obj_kappa(x):
-            self._debug_print('objkappabrain', dict(
-                mu=mu,
-                kappa=kappa,
-                kappa2=x,
-                tau=tau,
-                omega=omega,
-                pi_kappa=pi_kappa,
-                pi_omega=pi_omega
-            ))
+            # self._debug_print('objkappabrain', dict(
+            #     mu=mu,
+            #     kappa=kappa,
+            #     kappa2=x,
+            #     tau=tau,
+            #     omega=omega,
+            #     pi_kappa=pi_kappa,
+            #     pi_omega=pi_omega
+            # ))
             return self.objective(
                 mu=mu,
                 kappa=x,
@@ -319,12 +324,20 @@ class ContinuousExact(object):
                 omega=omega,
                 pi_kappa=pi_kappa,
                 pi_omega=pi_omega)
+        check_grads(obj_kappa, kappa)
 
-        grad_kappa_ = autograd.value_and_grad(
+        grad_kappa_ = autograd.grad(
             obj_kappa, 0)
+
         def grad_kappa(x):
+            g = grad_kappa_(x)
             self._debug_print('grad_kappa_p', x)
-            return self._debug_tee('grad_kappa_v', grad_kappa_(x))
+            self._debug_print('grad_kappa_v', g)
+            self._debug_print(
+                'grad_kappa_v_h',
+                nd(obj_kappa, kappa)
+            )
+            return g
         kappa_bounds = [(0, 1)] * self.n_phi_bases
 
         def obj_tau(x):
@@ -364,6 +377,24 @@ class ContinuousExact(object):
         for i in range(max_steps):
             self._debug_print('fit', fit)
             new_fit = {}
+            res = minimize(
+                obj_kappa,
+                kappa,
+                method='TNC',
+                # method='L-BFGS-B',
+                jac=grad_kappa,
+                bounds=kappa_bounds,
+                callback=lambda x: self._debug_tee('kappa_fit', x),
+                options=dict(
+                    maxiter=step_iter,
+                    disp=self.debug
+                )
+            )
+            kappa = res.x
+            from IPython.core.debugger import Tracer; Tracer()()
+
+            new_fit['kappa'] = kappa
+
             if self._fit_tau:
                 res = minimize(
                     grad_tau,
@@ -380,23 +411,6 @@ class ContinuousExact(object):
                 tau = res.x
                 new_fit['tau'] = tau
 
-            res = minimize(
-                grad_kappa,
-                kappa,
-                method='TNC',
-                # method='L-BFGS-B',
-                jac=True,
-                bounds=kappa_bounds,
-                callback=lambda x: self._debug_tee('kappa_fit', x),
-                options=dict(
-                    maxiter=step_iter,
-                    disp=self.debug
-                )
-            )
-            kappa = res.x
-            from IPython.core.debugger import Tracer; Tracer()()
-
-            new_fit['kappa'] = kappa
 
             if self._fit_omega:
                 omega_bounds = [(0, None)] * self.n_omega
