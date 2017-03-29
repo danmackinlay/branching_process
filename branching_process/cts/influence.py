@@ -15,9 +15,9 @@ class InfluenceKernel(object):
             self,
             n_bases=1,
             *args, **fixed_args):
-        self._fixed_args = fixed_args
-        self._fixed_args.setdefault('kappa', np.ones(n_bases)/n_bases)
-        self._fixed_args.setdefault('tau', np.arange(n_bases))
+        self._default_kwargs = fixed_args
+        self._default_kwargs.setdefault('kappa', np.ones(n_bases)/n_bases)
+        self._default_kwargs.setdefault('tau', np.arange(n_bases))
         self.n_bases = n_bases
         super(InfluenceKernel, self).__init__(*args)
 
@@ -25,7 +25,7 @@ class InfluenceKernel(object):
         return self.get_params(**kwargs).get(key, fallback)
 
     def get_params(self, **kwargs):
-        new_kwargs = dict(**self._fixed_args)
+        new_kwargs = dict(**self._default_kwargs)
         for key, val in kwargs.items():
             if val is not None:
                 new_kwargs[key] = val

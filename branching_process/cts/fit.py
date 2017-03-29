@@ -185,12 +185,12 @@ class ContinuousExact(object):
         self._t_start = t_start
         self._t_end = t_end or ts[-1]
         self._ts = ts
-        self._n_ts = np.sum(ts[
+        self._n_ts = ts[
             np.logical_and(
                 ts >= self._t_start,
                 ts < self._t_end
             )
-        ])
+        ].size
         # Full data likelihood must evaluate at the t_end also
         if ts[-1] < self._t_end:
             _eval_ts = np.append(
@@ -230,6 +230,10 @@ class ContinuousExact(object):
         self._fit_omega = fit_omega
         self.n_tau = self.n_phi_bases * self._fit_tau
         self.n_omega = self.n_mu_bases * self._fit_omega
+        self._mu_bounds = [(0, None)]
+        self._kappa_bounds = [(0, 1)] * self.n_phi_bases
+        self._tau_bounds = [(0, None)] * self.n_tau
+        self._omega_bounds = [(0, None)] * self.n_omega
 
     def _teardown_graphs(self):
 
@@ -263,17 +267,14 @@ class ContinuousExact(object):
             **kwargs
         )
 
-    def _fit(
+    def _guess_params(
             self,
-            mu=None,  # ignored?
+            mu=None,
             kappa=None,
             tau=None,
             omega=None,
             pi_kappa=0.0,
             pi_omega=1e-8,
-            max_steps=3,
-            step_iter=15,
-            eps=1e-8,
             **kwargs
             ):
         """
@@ -294,96 +295,90 @@ class ContinuousExact(object):
                 'mu',
                 self._n_ts/(self._t_end - self._t_start) * 0.1
             )
+        return dict(
+            mu=mu,
+            kappa=kappa,
+            tau=tau,
+            omega=omega,
+            pi_omega=pi_omega,
+            pi_kappa=pi_kappa,
+        )
 
-        # def obj_mu(x):
-        #     return self.objective(
-        #         mu=x,
-        #         kappa=kappa,
-        #         tau=tau,
-        #         omega=omega,
-        #         pi_kappa=pi_kappa,
-        #         pi_omega=pi_omega)
-        #
-        # grad_mu = autograd.value_and_grad(
-        #     obj_mu, 0)
+    def obj_mu(self, x):
+        return self.objective(
+            mu=x,
+            kappa=self.params['kappa'],
+            tau=self.params['tau'],
+            omega=self.params['omega'],
+            pi_kappa=self.params['pi_kappa'],
+            pi_omega=self.params['pi_omega'])
 
-        def obj_kappa(x):
-            # self._debug_print('objkappabrain', dict(
-            #     mu=mu,
-            #     kappa=kappa,
-            #     kappa2=x,
-            #     tau=tau,
-            #     omega=omega,
-            #     pi_kappa=pi_kappa,
-            #     pi_omega=pi_omega
-            # ))
-            return self.objective(
-                mu=mu,
-                kappa=x,
-                tau=tau,
-                omega=omega,
-                pi_kappa=pi_kappa,
-                pi_omega=pi_omega)
-        check_grads(obj_kappa, kappa)
+    def obj_kappa(self, x):
+        return self.objective(
+            mu=self.params['mu'],
+            kappa=x,
+            tau=self.params['tau'],
+            omega=self.params['omega'],
+            pi_kappa=self.params['pi_kappa'],
+            pi_omega=self.params['pi_omega'])
 
-        grad_kappa_ = autograd.grad(
-            obj_kappa, 0)
+    def obj_tau(self, x):
+        return self.objective(
+            mu=self.params['mu'],
+            kappa=self.params['kappa'],
+            tau=x,
+            omega=self.params['omega'],
+            pi_kappa=self.params['pi_kappa'],
+            pi_omega=self.params['pi_omega'])
 
-        def grad_kappa(x):
-            g = grad_kappa_(x)
-            self._debug_print('grad_kappa_p', x)
-            self._debug_print('grad_kappa_v', g)
-            self._debug_print(
-                'grad_kappa_v_h',
-                nd(obj_kappa, kappa)
-            )
-            return g
-        kappa_bounds = [(0, 1)] * self.n_phi_bases
+    def obj_omega(self, x):
+        return self.objective(
+            mu=self.params['mu'],
+            kappa=self.params['kappa'],
+            tau=self.params['tau'],
+            omega=x,
+            pi_kappa=self.params['pi_kappa'],
+            pi_omega=self.params['pi_omega'])
 
-        def obj_tau(x):
-            return self.objective(
-                mu=mu,
-                kappa=kappa,
-                tau=x,
-                omega=omega,
-                pi_kappa=pi_kappa,
-                pi_omega=pi_omega)
+    def _setup_grad(self):
+        self._grad_mu = autograd.value_and_grad(
+            self.obj_mu, 0)
+        self._grad_kappa = autograd.grad(
+            self.obj_kappa, 0)
+        self._grad_tau = autograd.value_and_grad(
+            self.obj_tau, 0)
+        self._grad_omega = autograd.value_and_grad(
+            self.obj_omega, 0)
 
-        grad_tau = autograd.value_and_grad(
-            obj_tau, 0)
-        tau_bounds = [(0, None)] * self.n_tau
-
-        def obj_omega(x):
-            return self.objective(
-                mu=mu,
-                kappa=kappa,
-                tau=tau,
-                omega=x,
-                pi_kappa=pi_kappa,
-                pi_omega=pi_omega)
-
-        grad_omega = autograd.value_and_grad(
-            obj_omega, 0)
+    def _fit(
+            self,
+            max_steps=3,
+            step_iter=15,
+            eps=1e-8,
+            warm=False,
+            **kwargs
+            ):
+        """
+        fit by truncated Newton in each coordinate group
+        """
+        if not warm:
+            self.params = self._guess_params(**kwargs)
+        self._setup_grad()
 
         # self._hessian_diag_negloglik = autograd.elementwise_grad(
         #     self._grad_negloglik, 0)
 
-        fit = dict(
-            kappa=kappa,
-            tau=tau,
-            mu=mu,
-            omega=omega,
-        )
+        fit = dict(**self.params)
         for i in range(max_steps):
             self._debug_print('fit', fit)
             new_fit = {}
             res = minimize(
-                obj_kappa,
-                kappa,
+                self.obj_kappa,
+                fit['kappa'],
                 method='TNC',
                 # method='L-BFGS-B',
-                jac=grad_kappa,
-                bounds=kappa_bounds,
+                jac=self._grad_kappa,
+                bounds=self._kappa_bounds,
                 callback=lambda x: self._debug_tee('kappa_fit', x),
                 options=dict(
                     maxiter=step_iter,
@@ -391,17 +386,17 @@ class ContinuousExact(object):
                 )
             )
             kappa = res.x
-            from IPython.core.debugger import Tracer; Tracer()()
+            # from IPython.core.debugger import Tracer; Tracer()()
 
             new_fit['kappa'] = kappa
 
             if self._fit_tau:
                 res = minimize(
-                    grad_tau,
-                    tau,
+                    self.obj_tau,
+                    fit['tau'],
                     method='L-BFGS-B',  # ?
-                    jac=True,
-                    bounds=tau_bounds,
+                    jac=self._grad_tau,
+                    bounds=self._tau_bounds,
                     callback=lambda x: self._debug_tee('tau_fit', x),
                     options=dict(
                         maxiter=step_iter,
@@ -411,15 +406,13 @@ class ContinuousExact(object):
                 tau = res.x
                 new_fit['tau'] = tau
 
-
             if self._fit_omega:
-                omega_bounds = [(0, None)] * self.n_omega
                 res = minimize(
-                    grad_omega,
-                    omega,
+                    self.obj_omega,
+                    fit['omega'],
                     method='TNC',
-                    jac=True,
-                    bounds=omega_bounds,
+                    jac=self._grad_omega,
+                    bounds=self._omega_bounds,
                     callback=lambda x: self._debug_tee('omega_fit', x),
                     options=dict(
                         maxiter=step_iter,
@@ -434,7 +427,7 @@ class ContinuousExact(object):
             big_lam = model.big_lam_hawkes(
                 mu=0.0,
                 ts=self._ts,
-                eval_ts=np.array([self._t_end, self._t_end]),
+                eval_ts=np.array([self._t_start, self._t_end]),
                 phi_kernel=self.phi_kernel,
                 mu_kernel=self.mu_kernel,
                 **new_fit,
@@ -447,6 +440,7 @@ class ContinuousExact(object):
             new_fit['mu'] = mu
             fit.update(**new_fit)
 
+        self.params.update(fit)
         return fit
 
     # def _fit_path(

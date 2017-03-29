@@ -19,8 +19,8 @@ class BackgroundKernel(InfluenceKernel):
             n_bases=0,
             kappa=None,
             *args, **fixed_args):
-        self._fixed_args = fixed_args
-        self._fixed_args.setdefault('kappa', np.ones(n_bases))
+        self._default_kwargs = fixed_args
+        self._default_kwargs.setdefault('kappa', np.ones(n_bases))
         self.n_bases = n_bases
         # super(BackgroundKernel, self).__init__(*args)
 
@@ -129,7 +129,7 @@ class MultiplicativeStepKernel(BackgroundKernel):
             'tau',
             np.linspace(0, t_end, n_bases+1, endpoint=True)
         )
-        super(AdditiveStepKernel, self).__init__(
+        super(MultiplicativeStepKernel, self).__init__(
             n_bases=n_bases,
             *args, **fixed_args)
 
