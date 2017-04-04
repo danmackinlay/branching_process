@@ -13,7 +13,7 @@ def sim_inar(
         phi=None,
         kappa=0.5,
         conditional_rvs=None,
-        end=None,
+        t_end=None,
         return_rates=False,
         return_partials=False,
         dispersion=0.0,
@@ -37,15 +37,15 @@ def sim_inar(
     :type mu: float
     :param mu: mean rate
 
-    :type end: int
-    :param end: stop simulation here
+    :type t_end: int
+    :param t_end: stop simulation here
 
     :return: vector of simulated child event counts
     :rtype: numpy.array
     """
 
-    if end is None:
-        end = immigrants.size
+    if t_end is None:
+        t_end = immigrants.size
     if phi is None:
         phi = geom(0.5).pmf(np.linspace(50))
 
@@ -72,7 +72,7 @@ def sim_inar(
                 'we have our own distribution'
             )
     rev_phi = phi[::-1]
-    total_counts = np.zeros(end, dtype='int')
+    total_counts = np.zeros(t_end, dtype='int')
     total_counts[:immigrants.size] = immigrants
     rates = np.zeros(total_counts.size)
     partials = []
@@ -80,7 +80,7 @@ def sim_inar(
     next_increment = conditional_rvs(mu)
     total_counts[0] += next_increment
 
-    for i in range(1, end):
+    for i in range(1, t_end):
         window_len = min(i, rev_phi.size)
         # print(window_len, "hist", i-window_len,i, 'k', -window_len)
         # convolve kernel with history so far

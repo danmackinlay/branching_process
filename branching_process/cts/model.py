@@ -1,4 +1,14 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+"""
+Poisson point process penalised likelihood regression.
+"""
+
 try:
+    import autograd
     import autograd.numpy as np
     import autograd.scipy as sp
     have_autograd = True
@@ -7,60 +17,182 @@ except ImportError as e:
     import scipy as sp
     have_autograd = False
 
+from scipy.stats import gaussian_kde
+from . import influence
+from . import background
 
 
-def intensity_hawkes(
-        timestamps,
-        mu,
-        phi,
-        eta=1.0,
-        eval_timestamps=None,
-        sort=True,
+def _as_mu_args(mu=None, omega=None, **kwargs):
+    """
+    utility function to convert model arguments to kernel arguments
+    """
+    kwargs = dict(mu=mu, **kwargs)
+    if omega is not None:
+        kwargs['kappa'] = omega
+    if mu is not None:
+        kwargs['mu'] = mu
+    return kwargs
+
+
+def _as_phi_args(kappa=None, tau=None, **kwargs):
+    """
+    utility function to convert model arguments to kernel arguments
+    """
+    kwargs = dict(kappa=kappa, **kwargs)
+    if tau is not None:
+        kwargs['tau'] = tau
+    return kwargs
+
+
+def lam(
+        ts,
+        eval_ts=None,
+        **kwargs):
+    """
+    """
+    if eval_ts is None:
+        eval_ts = ts
+    fn = gaussian_kde(
+        ts,
+        (np.amax(ts)-np.amin(ts))/ts.size
+        # * (ts.size**(-0.8))
+    )
+    return fn(eval_ts) * ts.size
+
+
+def lam_hawkes(
+        ts,
+        phi_kernel=0.0,
+        mu_kernel=0.0,
+        eval_ts=None,
         max_floats=1e8,
         **kwargs):
     """
-    True intensity of Hawkes process.
-    Memory-hungry; could be improved, with numba.
+    Intensity of Hawkes process given time series and parameters.
+    Memory-hungry per default; could be improved with numba.
     """
-    timestamps = np.asarray(timestamps).ravel()
-    if sort:
-        timestamps = np.sort(timestamps)
-    if eval_timestamps is None:
-        eval_timestamps = timestamps
-        if sort:
-            eval_timestamps = np.sort(eval_timestamps)
-    eval_timestamps = np.asarray(eval_timestamps).ravel()
-    if ((timestamps.size) * (eval_timestamps.size)) > max_floats:
-        return _intensity_hawkes_lite(
-            timestamps=timestamps,
-            mu=mu,
-            phi=phi,
-            eta=eta,
-            eval_timestamps=eval_timestamps,
-            **kwargs)
-    deltas = eval_timestamps.reshape(1, -1) - timestamps.reshape(-1, 1)
+    ts = np.asfarray(ts).ravel()
+
+    if eval_ts is None:
+        eval_ts = ts
+    eval_ts = np.asfarray(eval_ts).ravel()
+    if ((ts.size) * (eval_ts.size)) > max_floats:
+        return _lam_hawkes_lite(
+            ts=ts,
+            phi_kernel=phi_kernel,
+            mu_kernel=mu_kernel,
+            eval_ts=eval_ts,
+            **kwargs
+        )
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
+    mu_kwargs = _as_mu_args(**kwargs)
+    phi_kwargs = _as_phi_args(**kwargs)
+    deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
-    endo = phi(deltas) * mask
-    lambdas = endo.sum(0) * eta + mu
-    return lambdas
+    endo = phi_kernel(
+        deltas.ravel(),
+        **phi_kwargs
+    ).reshape(deltas.shape) * mask
+    exo = mu_kernel(
+        eval_ts, **mu_kwargs
+    )
+    return endo.sum(0) + exo
 
 
-def _intensity_hawkes_lite(
-        timestamps,
-        eval_timestamps,
-        mu,
-        phi,
-        eta=1.0,
+def _lam_hawkes_lite(
+        ts,
+        eval_ts,
+        mu_kernel,
+        phi_kernel,
+        t_start=0.0,
         **kwargs):
     """
-    True intensity of hawkes process.
+    Intensity of Hawkes process given time series and parameters.
     Memory-lite version. CPU-hungry, could be improved with numba.
+
+    Uses assignment so may need to be altered for differentiability.
     """
-    endo = np.zeros_like(eval_timestamps)
-    deltas = np.zeros_like(timestamps)
-    mask = np.zeros_like(timestamps)
-    for i in range(eval_timestamps.size):
-        deltas[:] = eval_timestamps[i] - timestamps
+    endo = np.zeros_like(eval_ts)
+    deltas = np.zeros_like(ts)
+    mask = np.zeros_like(ts)
+    mu_kwargs = _as_mu_args(**kwargs)
+    phi_kwargs = _as_phi_args(**kwargs)
+    for i in range(eval_ts.size):
+        deltas[:] = eval_ts[i] - ts
         mask[:] = deltas > 0.0
-        endo[i] = np.sum(phi(deltas) * mask)
-    return endo * eta + mu
+        endo[i] = np.sum(phi_kernel(deltas, **phi_kwargs) * mask)
+    exo = mu_kernel(eval_ts, **mu_kwargs)
+    return endo + exo
+
+
+def big_lam_hawkes(
+        ts,
+        eval_ts,
+        mu,
+        phi_kernel,
+        mu_kernel=1.0,
+        t_start=0.0,
+        **kwargs
+        ):
+    """
+    True integrated intensity of hawkes process.
+    since you are probably evaluating this only at one point,
+    this is only available in a vectorised high-memory version.
+    """
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
+    ts = np.asfarray(ts).ravel()
+    mu_kwargs = _as_mu_args(mu=mu, **kwargs)
+    phi_kwargs = _as_phi_args(mu=mu, **kwargs)
+    deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
+    mask = deltas > 0.0
+    big_endo = phi_kernel.integrate(
+        deltas.ravel(),
+        **phi_kwargs
+    ).reshape(deltas.shape) * mask
+    big_exo = (
+        mu_kernel.integrate(eval_ts, **mu_kwargs) -
+        mu_kernel.integrate(t_start, **mu_kwargs)
+    )
+    return big_endo.sum(0) + big_exo
+
+
+def loglik(
+        ts,
+        phi_kernel=None,
+        mu_kernel=1.0,
+        t_start=0.0,
+        t_end=None,
+        eval_ts=None,
+        **kwargs):
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
+
+    if t_end is None:
+        t_end = ts[-1]
+    # as an optimisation we allow passing in an eval_ts array,
+    # in which case t_start and t_end are ignored.
+    if eval_ts is None:
+        if t_end > ts[-1]:
+            eval_ts = np.concatenate((ts[ts > t_start], [t_end]))
+        else:
+            eval_ts = ts[np.logical_and((ts > t_start), (ts < t_end))]
+
+    lam = lam_hawkes(
+        ts=ts,
+        phi_kernel=phi_kernel,
+        mu_kernel=mu_kernel,
+        eval_ts=eval_ts,
+        **kwargs
+    )
+    big_lam = big_lam_hawkes(
+        ts=ts,
+        phi_kernel=phi_kernel,
+        mu_kernel=mu_kernel,
+        t_start=t_start,
+        eval_ts=np.array(t_end),
+        **kwargs
+    )
+
+    return np.sum(np.log(lam)) - big_lam

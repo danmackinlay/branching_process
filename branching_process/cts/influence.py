@@ -1,117 +1,173 @@
+have_autograd = False
+
 try:
     import autograd
-    import autograd.numpy as np
-    from autograd.numpy import sqrt, pi
     have_autograd = True
+    import autograd.numpy as np
+    import autograd.scipy as sp
 except ImportError as e:
     import numpy as np
-    have_autograd = False
-    from np import sqrt, pi
+    import scipy as sp
 
 
 class InfluenceKernel(object):
+    def __init__(
+            self,
+            n_bases=1,
+            *args, **fixed_args):
+        self._default_kwargs = fixed_args
+        self._default_kwargs.setdefault('kappa', np.ones(n_bases)/n_bases)
+        self._default_kwargs.setdefault('tau', np.arange(n_bases))
+        self.n_bases = n_bases
+        super(InfluenceKernel, self).__init__(*args)
 
-    def majorant(self, t, tau, *args, **kwargs):
-        return self(t, tau=tau, *args, **kwargs)
+    def get_param(self, key, fallback=None, **kwargs):
+        return self.get_params(**kwargs).get(key, fallback)
 
-    def __call__(self, t, tau, *args, **kwargs):
-        raise NotImplementedError()
+    def get_params(self, **kwargs):
+        new_kwargs = dict(**self._default_kwargs)
+        for key, val in kwargs.items():
+            if val is not None:
+                new_kwargs[key] = val
+        return new_kwargs
 
-    def integrate(self, t, tau, *args, **kwargs):
-        # some kind of quadrature?
-        raise NotImplementedError()
+    def majorant(
+            self,
+            t,
+            *args, **kwargs):
+        return np.sum(
+            self.majorant_each(t, *args, **kwargs),
+            1
+        )
+
+    def __call__(
+            self,
+            t,
+            *args, **kwargs):
+        return np.sum(
+            self.call_each(t, *args, **kwargs),
+            1
+        )
+
+    def integrate(
+            self,
+            t,
+            *args, **kwargs):
+        return np.sum(
+            self.integrate_each(t, *args, **kwargs),
+            1
+        )
+
+    def majorant_each(
+            self,
+            t,
+            *args, **kwargs):
+        params = self.get_params(**kwargs)
+        params['tau'] = np.reshape(params['tau'], (1, -1))
+        return getattr(
+            self, '_majorant', self._kernel
+        )(
+            t=np.reshape(t, (-1, 1)),
+            *args, **params
+        ) * np.reshape(params['kappa'], (1, -1))
+
+    def call_each(
+            self,
+            t,
+            *args, **kwargs):
+        params = self.get_params(**kwargs)
+        params['tau'] = np.reshape(params['tau'], (1, -1))
+
+        return self._kernel(
+            t=np.reshape(t, (-1, 1)),
+            *args, **params
+        ) * np.reshape(params['kappa'], (1, -1))
+
+    def integrate_each(
+            self,
+            t,
+            *args, **kwargs):
+        params = self.get_params(**kwargs)
+        params['tau'] = np.reshape(params['tau'], (1, -1))
+        return self._integrate(
+            t=np.reshape(t, (-1, 1)),
+            *args, **params
+        ) * np.reshape(params['kappa'], (1, -1))
 
 
-class UniModalInfluenceKernel(InfluenceKernel):
-    def mode(self, tau, *args, **kwargs):
-        return 0
+class ExpKernel(InfluenceKernel):
+    def _kernel(self, t, tau, *args, **kwargs):
+        theta = 1.0 / tau
+        return theta * np.exp(-t * theta) * (t >= 0)
 
-    def majorant(self, t, tau, *args, **kwargs):
-        mode = self.mode(tau)
-        peak = self(mode)
+    def _integrate(self, t, tau, *args, **kwargs):
+        theta = 1.0 / tau
+        return 1 - np.exp(-t * theta) * (t >= 0)
+
+
+class MaxwellKernel(InfluenceKernel):
+    """
+    http://mathworld.wolfram.com/MaxwellDistribution.html
+    I think I could just use ``scipy.stats.maxwell``?
+    That seems not to be autograd differentiable.
+    """
+    def _kernel(self, t, tau, *args, **kwargs):
+        t2 = np.square(t)
+        return np.sqrt(2.0/np.pi) * t2 * np.exp(
+            -t2 / (2 * tau**2)
+        )/(tau**3)
+
+    def _integrate(self, t, tau, *args, **kwargs):
+        return sp.special.erf(
+            t / (np.sqrt(2)*tau)
+        ) - t * np.sqrt(2.0/np.pi) / tau * np.exp(
+            -np.square(t)/(2 * np.square(tau))
+        )
+
+    def _majorant(self, t, tau, *args, **kwargs):
+        mode = np.sqrt(2) * tau
+        peak = self._kernel(mode, tau=tau, *args, **kwargs)
         return np.choose(
             t > mode,
             [
                 peak,
-                self(t, tau, *args, **kwargs)
+                self._kernel(t, tau=tau, *args, **kwargs)
             ]
         )
 
 
-class ExpKernel(InfluenceKernel):
-    def __call__(self, t, tau, *args, **kwargs):
-        theta = 1.0 / tau
-        return theta * np.exp(-t * theta) * (t >= 0)
-
-
-class MaxwellKernel(UniModalInfluenceKernel):
+class GenericKernel(InfluenceKernel):
     """
-    I think I could just use ``scipy.stats.maxwell``?
+    Construct a kernel from some functions
     """
-    def __call__(self, t, tau, *args, **kwargs):
-        t2 = np.square(t)
-        return sqrt(2.0/pi) * t2 * np.exp(
-            -t2 / (2 * tau**2)
-        )/(tau**3)
-
-    def mode(self, tau, *args, **kwargs):
-        return sqrt(2) * tau
-
-
-class MultiKernel(object):
-    def __init__(
-            self,
-            n_kernels=1,
-            kernel=MaxwellKernel(),
-            *args, **kwargs):
-        self.kernel=kernel
-
-    def majorant(self, t, tau=None, kappa=None, *args, **kwargs):
-        return self(t, tau=tau, kappa=kappa, *args, **kwargs)
-
-    def __call__(self, t, tau=None, kappa=None, *args, **kwargs):
-        pass
-
-    def integrate(self, t, tau=None, kappa=None, *args, **kwargs):
-        pass
-
-    def majorant_all(self, t, tau=None, kappa=None, *args, **kwargs):
-        out = np.zeros(n_kernels)
-        if np.isscalar(kappa):
-            kappa = np.ones(self.n_kernels) * kappa
-        for i in range(n_kernels):
-            out[i] = kernel(t, tau=tau[i], kappa=kap
-        return out
-
-    def call_all(self, t, tau=None, kappa=None, *args, **kwargs):
-        pass
-
-    def integrate_all(self, t, tau=None, kappa=None, *args, **kwargs):
-        pass
-
-
-# replace with a wrapper function? yes.
-class FixedKernel(InfluenceKernel):
     def __init__(
             self,
             kernel,
-            tau=1.0,
-            kappa=1.0,
+            majorant=None,
+            integral=None,
+            *args,
+            **fixed_args
             ):
-        self.tau = tau
-        self.kappa = kappa
+        self._kernel = kernel
+        self._majorant = majorant if majorant is not None else kernel
+        self._integrate = integral
+        super(GenericKernel, self).__init__(*args, **fixed_args)
 
-    def majorant(self, t, *args, **kwargs):
-        return kernel.majorant(
-            t, tau=self.tau, kappa=self.kappa,
-            *args, **kwargs)
 
-    def __call__(self, t, *args, **kwargs):
-        return kernel(
-            t, tau=self.tau, kappa=self.kappa,
-            *args, **kwargs)
-
-    def integrate(self, t, *args, **kwargs):
-        return kernel.integrate(
-            t, tau=self.tau, kappa=self.kappa,
-            *args, **kwargs)
+def as_influence_kernel(
+        function,
+        majorant=None,
+        integral=None,
+        n_bases=1,
+        **kwargs
+        ):
+    if hasattr(function, 'majorant'):
+        return function
+    else:
+        # a function, but not a kernel
+        return GenericKernel(
+            kernel=function,
+            majorant=majorant,
+            integral=integral,
+            n_bases=n_bases
+        )

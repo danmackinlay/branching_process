@@ -22,8 +22,8 @@ def fits_compare(
         phi=lambda t: expon(scale=5.0).pdf(t),
         mu=9.0,
         eta=0.9,
-        start=0.0,
-        end=300,
+        t_start=0.0,
+        t_end=300,
         n_iter=1000,
         basis_lag=1.0,
         penalty_weight='adaptive',
@@ -39,7 +39,7 @@ def fits_compare(
 
     for i in range(n_iter):
         timestamps = np.sort(sim(
-            phi=phi, mu=mu, eta=eta, start=start, end=end
+            phi=phi, mu=mu, eta=eta, t_start=t_start, t_end=t_end
         ))
         fits_1.append(
             fit_and_analyse(
