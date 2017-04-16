@@ -2,12 +2,34 @@ import numpy as np
 from numpy import random
 from warnings import warn
 from . import influence
+from . import background
 
 
-def sim_poisson(
+def sim_poisson_kernel(
+        background_kernel,
+        **kwargs):
+    """
+    A small hack for ease and speed;
+    delegate simulation of a locally constant to the appropriate method.
+
+    """
+    background_kernel = background.as_background_kernel(background_kernel)
+    if isinstance(background_kernel, background.ConstKernel):
+        return sim_const(
+            background_kernel.mu,
+            **kwargs
+        )
+    elif isinstance(background_kernel, background.StepKernel):
+        return sim_piecewise_const(
+            background_kernel.omega(),
+            background_kernel.get_param('tau')
+        )
+
+
+def sim_const(
         mu,
         t_start=0.0,
-        t_end=1.0):
+        t_end=100.0):
     """
     Simulate constant-rate Poisson process.
 
@@ -23,19 +45,22 @@ def sim_poisson(
     :return: vector of simulated event times on [t_start, t_end], unsorted.
     :rtype: numpy.array
     """
-    timespan = t_end-t_start
+    timespan = t_end - t_start
     N = random.poisson(lam=mu*timespan)
     return t_start + random.rand(N)*timespan
 
 
-def sim_piecewise_poisson(
+def sim_piecewise_const(
         mu_v,
-        t_v):
+        t_v,
+        t_start=None,
+        t_end=None,
+        ):
     """
     Simulate piecewise constant-rate Poisson process.
 
     :type mu_v: np.array
-    :param mu: background rate of the immigrant process,
+    :param mu_v: background rate of the immigrant process,
       assumed to be stepwise defined over intervals.
       Any of these after the last ``t_v.size-1``
       are ignored.
@@ -50,8 +75,13 @@ def sim_piecewise_poisson(
     t_v = np.asarray(t_v)
     n_steps = t_v.size - 1
 
+    if t_start is not None or t_end is not None:
+        if t_start != t_v[0] or t_end != t_v[-1]:
+            raise NotImplementedError(
+                '`t_start`/`t_end` not yet supported for piecewise simulations'
+            )
     return np.concatenate([
-        sim_poisson(mu, t_start, t_end)
+        sim_const(mu, t_start, t_end)
         for mu, t_start, t_end
         in zip(mu_v[:n_steps], t_v[:-1], t_v[1:])
     ])
@@ -134,8 +164,7 @@ def sim_inhom_clusters(
 
 def sim_branching(
         immigrants,
-        phi_kernel,
-        phi_m=None,
+        phi,
         max_gen=150,  # That's a *lot*
         t_end=np.inf):
     """
@@ -149,12 +178,6 @@ def sim_branching(
       if it is greater than 1, will cause explosions, and
       if it is less than 1 will cause cluster extinction and
       if it is equal to 1 will cause overenthusiastic physicists.
-
-    :type phi_m: function
-    :param phi_m: a majorant; a non-increasing L-1 integrable function
-      which is greater than or equal to the kernel. If phi_kernel is already
-      non-increasing it can be its own majorant, and this will be assumed
-      as default.
 
     :type immigrants: np.array
     :param immigrants: An array of seed events; These will not be returned.
@@ -172,7 +195,7 @@ def sim_branching(
     :rtype: numpy.array
     """
 
-    phi_kernel = influence.as_influence_kernel(phi_kernel, majorant=phi_m)
+    phi_kernel = influence.as_influence_kernel(phi)
     Tnext = np.asfarray(immigrants)
     allT = [np.array([])]
 
@@ -198,10 +221,10 @@ def sim_branching(
 
 
 def sim_hawkes(
-        phi_kernel,
+        phi,
         mu=1.0,
-        t_start=0.0, t_end=1.0,
-        phi_m=None,
+        t_start=0.0,
+        t_end=100.0,
         immigrants=None,
         sort=True,
         **kwargs):
@@ -214,8 +237,8 @@ def sim_hawkes(
     :type immigrants: array
     :param immigrants: external immigrant process
 
-    :type phi_kernel: function
-    :param phi_kernel: influence kernel for each event,
+    :type phi: function
+    :param phi: influence kernel for each event,
       a non-negative function with positive support.
       The L_1 norm of `phi_kernel` is the branching ratio which,
       if it is greater than 1, will cause explosions, and
@@ -228,12 +251,6 @@ def sim_hawkes(
     :type t_end: float
     :param t_end: ignore events after this time
 
-    :type phi_m: function
-    :param phi_m: a majorant; a non-increasing L_1 integrable function which is
-      greater than or equal to the kernel.
-      If phi_kernel is already non-increasing, it
-      can be its own majorant, and this will be assumed as default.
-
     :return: vector of simulated event times on [T0, T1], unsorted.
     :rtype: numpy.array
     """
@@ -242,17 +259,21 @@ def sim_hawkes(
     else:
         immigrants = np.asfarray(immigrants)
 
+    mu = background.as_background_kernel(mu)
     immigrants = np.append(
         immigrants,
-        sim_poisson(mu, t_start, t_end)
+        sim_poisson_kernel(
+            background_kernel=mu,
+            t_start=t_start,
+            t_end=t_end)
     )
+
     ts = np.append(
         immigrants,
         sim_branching(
             immigrants=immigrants,
-            phi_kernel=phi_kernel,
+            phi=phi,
             t_end=t_end,
-            phi_m=phi_m,
             **kwargs
         )
     )

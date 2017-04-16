@@ -68,7 +68,7 @@ def obs_times_poisson(
     seq_start_t = np.amin(timestamps)
     seq_end_t = np.amax(timestamps)
     times = np.sort(
-        sim_cts.sim_poisson(
+        sim_cts.sim_const(
             start=seq_start_t,
             end=seq_end_t,
             mu=rate

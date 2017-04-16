@@ -50,7 +50,7 @@ class ConstKernel(BackgroundKernel):
         return t * mu
 
 
-class AdditiveStepKernel(BackgroundKernel):
+class StepKernel(BackgroundKernel):
     """
     Piecewise-constant rate.
     This is presumably for background rate modelling.
@@ -77,11 +77,13 @@ class AdditiveStepKernel(BackgroundKernel):
             'tau',
             np.linspace(0, t_end, n_bases+1, endpoint=True)
         )
-        super(AdditiveStepKernel, self).__init__(
+        super(StepKernel, self).__init__(
             n_bases=n_bases,
             *args, **fixed_args)
 
-    def omega(self, kappa, mu, **kwargs):
+    def omega(self, **kwargs):
+        kappa = self.get_param('kappa', **kwargs)
+        mu = self.get_param('mu', 0.0, **kwargs)
         return np.maximum(kappa + mu, 0)
 
     def __call__(self, t, *args, **kwargs):
@@ -90,7 +92,7 @@ class AdditiveStepKernel(BackgroundKernel):
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        omega = self.omega(kappa, mu)
+        omega = self.omega(kappa=kappa, mu=mu)
         tt = np.reshape(t, (-1, 1))
         stepwise_mask = (
             (tt >= tau[:-1].reshape(1, -1)) *
@@ -105,13 +107,16 @@ class AdditiveStepKernel(BackgroundKernel):
 
     def integrate(self, t, *args, **kwargs):
         """
-        This is tedious to construct since
+        This integral is a simple linear interpolant,
+        which I wouod like to do as a spline.
+        However, I need to do it manually, since
         it needs to be autograd differentiable, which splines are not.
+        The method here is not especially efficent.
         """
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        omega = self.omega(kappa, mu)
+        omega = self.omega(kappa=kappa, mu=mu)
         t = np.reshape(t, (-1, 1))
         delta = np.diff(tau)
         each = np.maximum(
@@ -133,12 +138,14 @@ class AdditiveStepKernel(BackgroundKernel):
         return np.ones_like(t) * (mu + np.amax(kappa))
 
 
-class MultiplicativeStepKernel(AdditiveStepKernel):
+class MultiplicativeStepKernel(StepKernel):
     """
     Piecewise-constant rate.
     This is presumably for background rate modelling.
     """
-    def omega(self, kappa, mu, **kwargs):
+    def omega(self, **kwargs):
+        kappa = self.get_param('kappa', **kwargs)
+        mu = self.get_param('mu', 0.0, **kwargs)
         return (1 + np.maximum(kappa, -1)) * mu
 
 
@@ -160,7 +167,7 @@ def as_background_kernel(
             **kwargs
         )
     else:
-        return AdditiveStepKernel(
+        return StepKernel(
             t_start=t_start,
             t_end=t_end,
             n_bases=n_bases,

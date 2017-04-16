@@ -155,19 +155,30 @@ class GenericKernel(InfluenceKernel):
 
 
 def as_influence_kernel(
-        function,
+        function=None,
         majorant=None,
         integral=None,
         n_bases=1,
         **kwargs
         ):
-    if hasattr(function, 'majorant'):
+    if function is None:
+        return ExpKernel(
+            n_bases=n_bases,
+            **kwargs
+        )
+    elif hasattr(function, 'majorant'):
         return function
-    else:
-        # a function, but not a kernel
+    elif callable(function):
+        # a function, but not yet a kernel
         return GenericKernel(
             kernel=function,
             majorant=majorant,
             integral=integral,
             n_bases=n_bases
+        )
+    else:
+        raise ValueError(
+            "How should I interpret {!r} as an influence kernel?".format(
+                function
+            )
         )

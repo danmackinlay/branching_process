@@ -63,8 +63,8 @@ def lam(
 
 def lam_hawkes(
         ts,
-        phi_kernel=0.0,
-        mu_kernel=0.0,
+        phi=None,
+        mu=0.0,
         eval_ts=None,
         max_floats=1e8,
         **kwargs):
@@ -77,6 +77,8 @@ def lam_hawkes(
     if eval_ts is None:
         eval_ts = ts
     eval_ts = np.asfarray(eval_ts).ravel()
+    phi_kernel = influence.as_influence_kernel(phi)
+    mu_kernel = background.as_background_kernel(mu)
     if ((ts.size) * (eval_ts.size)) > max_floats:
         return _lam_hawkes_lite(
             ts=ts,
@@ -85,8 +87,6 @@ def lam_hawkes(
             eval_ts=eval_ts,
             **kwargs
         )
-    phi_kernel = influence.as_influence_kernel(phi_kernel)
-    mu_kernel = background.as_background_kernel(mu_kernel)
     mu_kwargs = _as_mu_args(**kwargs)
     phi_kwargs = _as_phi_args(**kwargs)
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
