@@ -22,9 +22,10 @@ from . import influence
 from . import background
 
 
-def _as_mu_args(mu=None, omega=None, **kwargs):
+def _as_mu_args(mu=None, omega=None, tau=None, **kwargs):
     """
-    utility function to convert model arguments to kernel arguments
+    utility function to convert model arguments to kernel arguments.
+    This renames omga and mu, and *ignores* tau.
     """
     kwargs = dict(mu=mu, **kwargs)
     if omega is not None:

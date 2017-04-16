@@ -151,8 +151,10 @@ class ContinuousExact(object):
             t_start=0.0,
             t_end=None,
             param_vector=None,
+            tol=1e-8,
             **kwargs):
 
+        self.tol = tol
         self._t_start = t_start
         self._t_end = t_end or ts[-1]
         self._ts = ts
@@ -179,23 +181,24 @@ class ContinuousExact(object):
         self._eval_ts = _eval_ts
 
         if phi_kernel is None:
-            phi_kernel = influence.MaxwellKernel(n_bases=5)
+            phi_kernel = influence.MaxwellKernel(
+                n_bases=n_phi_bases
+            )
         else:
             phi_kernel = influence.as_influence_kernel(
                 phi_kernel, n_bases=n_phi_bases
             )
         self.phi_kernel = phi_kernel
         self.n_phi_bases = phi_kernel.n_bases
-        if mu_kernel is None:
-            if n_mu_bases > 0:
-                mu_kernel = background.AdditiveStepKernel(
-                    t_start=self._t_start,
-                    t_end=self._t_end,
-                    n_bases=n_mu_bases)
-            else:
-                mu_kernel = background.ConstKernel()
+        mu_kernel = background.as_background_kernel(
+            mu_kernel,
+            n_bases=n_mu_bases,
+            t_start=self._t_start,
+            t_end=self._t_end,
+        )
+
         self.mu_kernel = mu_kernel
-        self.n_mu_bases = n_mu_bases
+        self.n_mu_bases = mu_kernel.n_bases
 
         self._fit_tau = fit_tau
         self._fit_omega = fit_omega
@@ -222,6 +225,7 @@ class ContinuousExact(object):
             fit_omega=False,
             t_start=0.0,
             t_end=None,
+            tol=1e-8,
             **kwargs
             ):
         self._setup_graphs(
@@ -232,6 +236,7 @@ class ContinuousExact(object):
             n_mu_bases=n_mu_bases,
             fit_tau=fit_tau,
             fit_omega=fit_omega,
+            tol=tol,
             **kwargs
         )
         return self._fit(
@@ -387,7 +392,7 @@ class ContinuousExact(object):
             )
             kappa = res.x
             # from IPython.core.debugger import Tracer; Tracer()()
-
+            kappa[np.abs(kappa < self.tol)] = 0
             new_fit['kappa'] = kappa
 
             if self._fit_tau:
@@ -420,10 +425,11 @@ class ContinuousExact(object):
                     )
                 )
                 omega = res.x
+                omega[np.abs(omega < self.tol)] = 0
                 new_fit['omega'] = omega
 
             # one-step mu update is possible for known noise structure
-            # e.g. additive, but not in general
+            # e.g. additive, but not in general. So let's not.
             res = minimize(
                 self.obj_mu,
                 fit['mu'],
@@ -444,138 +450,6 @@ class ContinuousExact(object):
 
         return fit
 
-    # def _fit_path(
-    #         self,
-    #         param_vector=None,
-    #         pi_kappa=0.0,
-    #         pi_omega=1e-8,
-    #         max_steps=50,
-    #         step_iter=20,
-    #         lr=0.1,
-    #         gamma=0.9,
-    #         eps=1e-8,
-    #         backoff=0.75,
-    #         warm_start=False,
-    #         **kwargs
-    #         ):
-    #
-    #     n_params = param_vector.size
-    #     param_path = np.zeros((n_params, max_steps))
-    #     pi_kappa_path = np.zeros(max_steps)
-    #     pi_omega_path = np.zeros(max_steps)
-    #     loglik_path = np.zeros(max_steps)
-    #     dof_path = np.zeros(max_steps)
-    #     aic_path = np.zeros(max_steps)
-    #
-    #     self._avg_sq_grad = avg_sq_grad = np.ones_like(param_vector)
-    #
-    #     for j in range(max_steps):
-    #         loss = self._objective_packed(param_vector)
-    #         best_loss = loss
-    #         local_lr = lr
-    #         best_param_vector = np.array(param_vector)
-    #
-    #         for i in range(step_iter):
-    #             g_negloglik = self._grad_negloglik(param_vector)
-    #             g_penalty = self._grad_penalty(param_vector, pi_kappa, pi_omega)
-    #             g = g_negloglik + g_penalty
-    #             self._debug_print(j, i, 'param', param_vector, 'grad', g)
-    #             avg_sq_grad[:] = avg_sq_grad * gamma + g**2 * (1 - gamma)
-    #
-    #             velocity = lr * g * (
-    #                     np.sqrt(avg_sq_grad) + eps
-    #             ) / (0.1 * (i + j + 10.0))
-    #             # watch out, nans
-    #             velocity[np.logical_not(np.isfinite(velocity))] = 0.0
-    #
-    #             penalty_dominant = np.abs(
-    #                 g_negloglik
-    #             ) < (
-    #                 self._penalty_weight_packed(pi_kappa, pi_omega)
-    #             )
-    #             velocity[penalty_dominant * (velocity == 0)] = 0.0
-    #             new_param_vector = param_vector - velocity * local_lr
-    #             # coefficients that pass through 0 must stop there
-    #             new_param_vector[
-    #                 np.abs(
-    #                     np.sign(new_param_vector) -
-    #                     np.sign(param_vector)
-    #                 ) == 2
-    #             ] = 0.0
-    #             new_param_vector[:] = np.maximum(new_param_vector, self._param_floor)
-    #             new_loss = self._objective_packed(new_param_vector)
-    #             if new_loss < loss:
-    #                 # print('good', loss, '=>', new_loss, local_lr)
-    #                 loss = new_loss
-    #                 param_vector = new_param_vector
-    #                 self._param_vector = new_param_vector
-    #             else:
-    #                 # print('bad', loss, '=>', new_loss, local_lr)
-    #                 local_lr = local_lr * backoff
-    #                 new_param_vector = param_vector + backoff * (
-    #                     new_param_vector - param_vector
-    #                 )
-    #                 loss = self._objective_packed(new_param_vector)
-    #             if loss < best_loss:
-    #                 best_param_vector = np.array(param_vector)
-    #                 best_loss = loss
-    #
-    #             if local_lr < 1e-3:
-    #                 self._debug_print('nope', j, i, max_steps)
-    #                 break
-    #
-    #         this_loglik = -self._negloglik_packed(best_param_vector)
-    #         this_dof = self._dof_packed(best_param_vector)
-    #         param_path[:, j] = best_param_vector
-    #         pi_kappa_path[j] = pi_kappa
-    #         pi_omega_path[j] = pi_omega
-    #         loglik_path[j] = this_loglik
-    #         dof_path[j] = this_dof
-    #         aic_path[j] = 2 * this_loglik - 2 * this_dof
-    #
-    #         # # regularisation parameter selection
-    #         # all_grad = self._unpack(
-    #         #     np.abs(
-    #         #         grad_objective(best_param_vector) *
-    #         #         (best_param_vector != 0.0)
-    #         #     )
-    #         # )
-    #         # kappa_grad = all_grad['kappa']
-    #         # log_omega_grad = all_grad.get('omega', None)
-    #         #
-    #         # if (
-    #         #     np.random.random() < (
-    #         #         np.sqrt(log_omega_grad.size) /
-    #         #         (np.sqrt(kappa_grad.size) +
-    #         #         np.sqrt(log_omega_grad.size))
-    #         #         )):
-    #         #     print('log_omega_grad', log_omega_grad)
-    #         #     pi_omega += max(
-    #         #         np.amin(log_omega_grad[log_omega_grad > 0])
-    #         #         * j/max_steps,
-    #         #         pi_omega * 0.1
-    #         #     )
-    #         # else:
-    #         #     print('kappa_grad', kappa_grad)
-    #         #     pi_kappa += max(
-    #         #         np.amin(kappa_grad[kappa_grad > 0]) * j / max_steps,
-    #         #         pi_kappa * 0.1
-    #         #     )
-    #     return FitHistory(
-    #         param_path=param_path[:, :j],
-    #         pi_kappa_path=pi_kappa_path[:j],
-    #         pi_omega_path=pi_omega_path[:j],
-    #         loglik_path=loglik_path[:j],
-    #         dof_path=dof_path[:j],
-    #         aic_path=aic_path[:j],
-    #         unpack=lambda v: self._unpack(v),
-    #         param_vector=best_param_vector,
-    #         param=self._unpack(best_param_vector),
-    #     )
-    #
-    # def coef_(self):
-    #     return self._unpack(self._param_vector)
-    #
 
 class FitHistory(object):
     def __init__(self, *args, **kwargs):

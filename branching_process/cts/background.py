@@ -69,7 +69,7 @@ class AdditiveStepKernel(BackgroundKernel):
             if fixed_args.get('tau', None) is not None:
                 n_bases = np.asarray(fixed_args.get('tau')).size - 1
             elif fixed_args.get('kappa', None) is not None:
-                n_bases = np.asarray(fixed_args.get('kapp')).size
+                n_bases = np.asarray(fixed_args.get('kappa')).size
             else:
                 n_bases = 100
         self.n_bases = n_bases
@@ -146,11 +146,23 @@ def as_background_kernel(
         function,
         majorant=None,
         integral=None,
-        n_bases=1,
+        n_bases=0,
+        t_start=0,
+        t_end=100,
         **kwargs
         ):
     if hasattr(function, 'majorant'):
         return function
-    else:
+    elif n_bases == 0:
         # a number or None?
-        return ConstKernel(mu=function or 0.0)
+        return ConstKernel(
+            mu=function or 1.0,
+            **kwargs
+        )
+    else:
+        return AdditiveStepKernel(
+            t_start=t_start,
+            t_end=t_end,
+            n_bases=n_bases,
+            **kwargs
+        )
