@@ -93,16 +93,21 @@ class AdditiveStepKernel(BackgroundKernel):
         omega = self.omega(kappa, mu)
         tt = np.reshape(t, (-1, 1))
         stepwise_mask = (
-            (tt > tau[:-1].reshape(1, -1)) -
-            (tt > tau[1:].reshape(1, -1))
+            (tt >= tau[:-1].reshape(1, -1)) *
+            (tt < tau[1:].reshape(1, -1))
         )
-        from IPython.core.debugger import Tracer; Tracer()()
+        outside = (t < tau[0]) + (t >= tau[-1])
+        # from IPython.core.debugger import Tracer; Tracer()()
         return np.sum(
             stepwise_mask * np.reshape(omega, (1, -1)),
             1
-        )
+        ) + outside * mu
 
     def integrate(self, t, *args, **kwargs):
+        """
+        This is tedious to construct since
+        it needs to be autograd differentiable, which splines are not.
+        """
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
@@ -120,27 +125,6 @@ class AdditiveStepKernel(BackgroundKernel):
             each * np.reshape(omega, (1, -1)),
             1
         ) + (mu * t.ravel())
-
-    def integrate2(self, t, *args, **kwargs):
-        """
-        This is tedious to construct since
-        it needs to be autograd differentiable, which splines are not.
-        So we do it in idiot python.
-        """
-        tau = self.get_param('tau', **kwargs)
-        kappa = self.get_param('kappa', **kwargs)
-        mu = self.get_param('mu', 0.0, **kwargs)
-        kappa = np.maximum(kappa, -mu)
-        tau_delta = np.diff(tau)
-        left_edge = np.zeros_like(tau)
-        left_edge[1:] = tau_delta * kappa
-        partial = np.zeros_like(t)
-        for i in range(tau.size-1):
-            partial = partial + (
-                (t >= tau[i]) * (t < tau[i+1]) * (t - tau[i])
-            ) * kappa[i] + left_edge[i]
-        t = np.reshape(t, (-1, 1))
-        return partial + (mu * t.ravel())
 
     def majorant(self, t, *args, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
