@@ -163,11 +163,12 @@ def as_background_kernel(
     elif n_bases == 0:
         # a number or None?
         return ConstKernel(
-            mu=function or 1.0,
+            mu=function,
             **kwargs
         )
     else:
         return StepKernel(
+            mu=function,
             t_start=t_start,
             t_end=t_end,
             n_bases=n_bases,

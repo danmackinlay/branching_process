@@ -5,7 +5,7 @@ from . import influence
 from . import background
 
 
-def sim_poisson_kernel(
+def sim_kernel(
         background_kernel,
         **kwargs):
     """
@@ -262,7 +262,7 @@ def sim_hawkes(
     mu = background.as_background_kernel(mu)
     immigrants = np.append(
         immigrants,
-        sim_poisson_kernel(
+        sim_kernel(
             background_kernel=mu,
             t_start=t_start,
             t_end=t_end)

@@ -202,6 +202,7 @@ class ContinuousExact(object):
 
         self._fit_tau = fit_tau
         self._fit_omega = fit_omega
+        self._fit_kappa = fit_kappa
         self.n_tau = self.n_phi_bases * self._fit_tau
         self.n_omega = self.n_mu_bases * self._fit_omega
         self._mu_bounds = [(0, None)]
@@ -221,6 +222,7 @@ class ContinuousExact(object):
             mu_kernel=None,
             n_phi_bases=1,
             n_mu_bases=0,
+            fit_kappa=True,
             fit_tau=False,
             fit_omega=False,
             t_start=0.0,

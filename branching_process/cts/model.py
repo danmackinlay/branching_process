@@ -48,14 +48,14 @@ def _as_phi_args(kappa=None, tau=None, **kwargs):
 def lam(
         ts,
         eval_ts=None,
-        **kwargs):
+        bw=1.0):
     """
     """
     if eval_ts is None:
         eval_ts = ts
     fn = gaussian_kde(
         ts,
-        (np.amax(ts)-np.amin(ts))/ts.size
+        bw * (np.amax(ts)-np.amin(ts))/ts.size
         # * (ts.size**(-0.8))
     )
     return fn(eval_ts) * ts.size
