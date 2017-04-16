@@ -81,7 +81,7 @@ class StepKernel(BackgroundKernel):
             n_bases=n_bases,
             *args, **fixed_args)
 
-    def omega(self, **kwargs):
+    def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
         return np.maximum(kappa + mu, 0)
@@ -92,7 +92,7 @@ class StepKernel(BackgroundKernel):
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        omega = self.omega(kappa=kappa, mu=mu)
+        f_kappa = self.f_kappa(kappa=kappa, mu=mu)
         tt = np.reshape(t, (-1, 1))
         stepwise_mask = (
             (tt >= tau[:-1].reshape(1, -1)) *
@@ -101,14 +101,14 @@ class StepKernel(BackgroundKernel):
         outside = (t < tau[0]) + (t >= tau[-1])
         # from IPython.core.debugger import Tracer; Tracer()()
         return np.sum(
-            stepwise_mask * np.reshape(omega, (1, -1)),
+            stepwise_mask * np.reshape(f_kappa, (1, -1)),
             1
         ) + outside * mu
 
     def integrate(self, t, *args, **kwargs):
         """
         This integral is a simple linear interpolant,
-        which I wouod like to do as a spline.
+        which I would like to do as a spline.
         However, I need to do it manually, since
         it needs to be autograd differentiable, which splines are not.
         The method here is not especially efficent.
@@ -116,7 +116,7 @@ class StepKernel(BackgroundKernel):
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        omega = self.omega(kappa=kappa, mu=mu)
+        f_kappa = self.f_kappa(kappa=kappa, mu=mu)
         t = np.reshape(t, (-1, 1))
         delta = np.diff(tau)
         each = np.maximum(
@@ -127,7 +127,7 @@ class StepKernel(BackgroundKernel):
             delta.reshape(1, -1)
         )
         return np.sum(
-            each * np.reshape(omega, (1, -1)),
+            each * np.reshape(f_kappa, (1, -1)),
             1
         ) + (mu * t.ravel())
 
@@ -143,7 +143,7 @@ class MultiplicativeStepKernel(StepKernel):
     Piecewise-constant rate.
     This is presumably for background rate modelling.
     """
-    def omega(self, **kwargs):
+    def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
         return (1 + np.maximum(kappa, -1)) * mu

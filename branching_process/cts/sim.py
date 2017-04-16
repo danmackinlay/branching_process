@@ -21,7 +21,7 @@ def sim_poisson_kernel(
         )
     elif isinstance(background_kernel, background.StepKernel):
         return sim_piecewise_const(
-            background_kernel.omega(),
+            background_kernel.f_kappa(),
             background_kernel.get_param('tau')
         )
 
