@@ -81,13 +81,16 @@ class AdditiveStepKernel(BackgroundKernel):
             n_bases=n_bases,
             *args, **fixed_args)
 
+    def omega(self, kappa, mu, **kwargs):
+        return np.maximum(kappa + mu, 0)
+
     def __call__(self, t, *args, **kwargs):
         """
         """
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        kappa = np.maximum(kappa, -mu)
+        omega = self.omega(kappa, mu)
         tt = np.reshape(t, (-1, 1))
         stepwise_mask = (
             (tt > tau[:-1].reshape(1, -1)) -
@@ -95,15 +98,15 @@ class AdditiveStepKernel(BackgroundKernel):
         )
         from IPython.core.debugger import Tracer; Tracer()()
         return np.sum(
-            stepwise_mask * np.reshape(kappa, (1, -1)),
+            stepwise_mask * np.reshape(omega, (1, -1)),
             1
-        ) + mu
+        )
 
     def integrate(self, t, *args, **kwargs):
         tau = self.get_param('tau', **kwargs)
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        kappa = np.maximum(kappa, -mu)
+        omega = self.omega(kappa, mu)
         t = np.reshape(t, (-1, 1))
         delta = np.diff(tau)
         each = np.maximum(
@@ -114,7 +117,7 @@ class AdditiveStepKernel(BackgroundKernel):
             delta.reshape(1, -1)
         )
         return np.sum(
-            each * np.reshape(kappa, (1, -1)),
+            each * np.reshape(omega, (1, -1)),
             1
         ) + (mu * t.ravel())
 
