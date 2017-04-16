@@ -27,9 +27,10 @@ def _task_html(pth):
     return dict(
         file_dep=[
             'docs/{pth}.ipynb'.format(pth=pth),
-            # 'docs/print.tplx',
-            # 'docs/refs.bib'.format(pth=pth),
-        ],
+            'docs/html.tpl'.format(pth=pth),
+        ]
+        #  + [ str(p) for p in pathlib.Path('docs/ext_media').glob('*')
+        ,
         targets=[
             'docs/{pth}.html'.format(pth=pth),
             # 'docs/refs.bib'.format(pth=pth)
@@ -38,7 +39,7 @@ def _task_html(pth):
             # 'mkdir -p docs',
             # 'ln -f docs/refs.bib docs/'.format(pth=pth),
             'jupyter nbconvert --to html '
-            # '--template=docs/html.tpl '
+            # '--template=docs/{pth}_html.tpl '
             '--FilesWriter.build_directory=docs/ '
             'docs/{pth}.ipynb'.format(pth=pth),
         ],
@@ -56,8 +57,9 @@ def _task_latex(pth):
     return dict(
         file_dep=[
             'docs/{pth}.ipynb'.format(pth=pth),
-            'docs/print.tplx',
+            'docs/{pth}_print.tplx'.format(pth=pth),
             'docs/refs.bib'.format(pth=pth),
+            # 'docs/ext_media/',
         ],
         targets=[
             '_paper_output/{pth}.tex'.format(pth=pth),
@@ -65,8 +67,9 @@ def _task_latex(pth):
         ],
         actions=[
             'mkdir -p _paper_output',
+            'rm -rf _paper_output/{pth}_files',
             'ln -f docs/refs.bib _paper_output'.format(pth=pth),
-            'jupyter nbconvert --to latex --template=docs/print.tplx '
+            'jupyter nbconvert --to latex --template=docs/{pth}_print.tplx '
             '--FilesWriter.build_directory=_paper_output/ '
             'docs/{pth}.ipynb'.format(pth=pth),
         ],
@@ -131,17 +134,27 @@ def _task_view_pdf(pth):
     )
 
 
-def _task_zdravko(pth):
+def _task_zdravko(srcpth, destpth):
     """
     """
     return dict(
-        file_dep=['_paper_output/{pth}.pdf'.format(pth=pth)],
+        file_dep=[
+            '_paper_output/{srcpth}.pdf'.format(srcpth=srcpth),
+            '_paper_output/{srcpth}.tex'.format(srcpth=srcpth),
+            '_paper_output/refs.bib'
+        ],
         actions=[
+            'mkdir -p ~/Dropbox/dan-zdravko-stuff/tex/{destpth}/'.format(
+                destpth=destpth
+            ),
             CmdAction(
-                'rsync -av {pth}_files '
-                'refs.bib {pth}.tex '
-                '{pth}.pdf'
-                ' ~/Dropbox/dan-zdravko-stuff/tex/$1/'.format(pth=pth),
+                'rsync -av {srcpth}_files '
+                'refs.bib {srcpth}.tex '
+                '{srcpth}.pdf'
+                ' ~/Dropbox/dan-zdravko-stuff/tex/{destpth}/'.format(
+                    srcpth=srcpth,
+                    destpth=destpth
+                ),
                 cwd='_paper_output'
             ),
         ],
@@ -149,20 +162,20 @@ def _task_zdravko(pth):
     )
 
 
-def task_latex_intro_to_discrete_hawkes():
-    return _task_latex('intro_to_discrete_hawkes')
+def task_latex_sparse_hawkes():
+    return _task_latex('sparse_hawkes')
 
 
-def task_pdf_intro_to_discrete_hawkes():
-    return _task_pdf('intro_to_discrete_hawkes')
+def task_pdf_sparse_hawkes():
+    return _task_pdf('sparse_hawkes')
 
 
-def task_view_pdf_intro_to_discrete_hawkes():
-    return _task_view_pdf('intro_to_discrete_hawkes')
+def task_view_pdf_sparse_hawkes():
+    return _task_view_pdf('sparse_hawkes')
 
 
-def task_html_intro_to_discrete_hawkes():
-    return _task_html('intro_to_discrete_hawkes')
+def task_html_sparse_hawkes():
+    return _task_html('sparse_hawkes')
 
 
 def task_html_intro_to_cts_hawkes():
