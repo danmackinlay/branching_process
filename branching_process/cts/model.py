@@ -180,17 +180,18 @@ def loglik(
     lam = lam_hawkes(
         ts=ts,
         phi=phi_kernel,
-        mu_kernel=mu_kernel,
+        mu=mu_kernel,
         eval_ts=eval_ts,
         **kwargs
     )
     big_lam = big_lam_hawkes(
         ts=ts,
         phi=phi_kernel,
-        mu_kernel=mu_kernel,
+        mu=mu_kernel,
         t_start=t_start,
         eval_ts=np.array(t_end),
         **kwargs
     )
+    # from IPython.core.debugger import Tracer; Tracer()()
 
     return np.sum(np.log(lam)) - big_lam
