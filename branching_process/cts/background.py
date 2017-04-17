@@ -160,6 +160,11 @@ def as_background_kernel(
         ):
     if hasattr(function, 'majorant'):
         return function
+    elif function is None:
+        # a number or None?
+        return ConstKernel(
+            **kwargs
+        )
     elif n_bases == 0:
         # a number or None?
         return ConstKernel(
