@@ -16,20 +16,21 @@ def sim_kernel(
     background_kernel = background.as_background_kernel(background_kernel)
     if isinstance(background_kernel, background.ConstKernel):
         return sim_const(
-            background_kernel.mu,
+            background_kernel.get_param('mu', **kwargs),
             **kwargs
         )
     elif isinstance(background_kernel, background.StepKernel):
         return sim_piecewise_const(
             background_kernel.f_kappa(),
-            background_kernel.get_param('tau')
+            background_kernel.get_param('tau', **kwargs)
         )
 
 
 def sim_const(
         mu,
         t_start=0.0,
-        t_end=100.0):
+        t_end=100.0,
+        sort=True,):
     """
     Simulate constant-rate Poisson process.
 
@@ -42,12 +43,15 @@ def sim_const(
     :type t_end: float
     :param t_end: no events after this time
 
-    :return: vector of simulated event times on [t_start, t_end], unsorted.
+    :return: vector of simulated event times on [t_start, t_end],.
     :rtype: numpy.array
     """
     timespan = t_end - t_start
     N = random.poisson(lam=mu*timespan)
-    return t_start + random.rand(N)*timespan
+    ts = t_start + random.rand(N)*timespan
+    if sort:
+        ts = np.sort(ts)
+    return ts
 
 
 def sim_piecewise_const(
@@ -55,6 +59,7 @@ def sim_piecewise_const(
         t_v,
         t_start=None,
         t_end=None,
+        sort=True
         ):
     """
     Simulate piecewise constant-rate Poisson process.
@@ -68,7 +73,7 @@ def sim_piecewise_const(
     :type t_v: np.array
     :param t_v: times of jumps in the step process.
 
-    :return: vector of simulated event times on [t_v[0], t_v[-1]], unsorted.
+    :return: vector of simulated event times on [t_v[0], t_v[-1]].
     :rtype: numpy.array
     """
     mu_v = np.asarray(mu_v)
@@ -81,7 +86,7 @@ def sim_piecewise_const(
                 '`t_start`/`t_end` not yet supported for piecewise simulations'
             )
     return np.concatenate([
-        sim_const(mu, t_start, t_end)
+        sim_const(mu, t_start=t_start, t_end=t_end, sort=sort)
         for mu, t_start, t_end
         in zip(mu_v[:n_steps], t_v[:-1], t_v[1:])
     ])

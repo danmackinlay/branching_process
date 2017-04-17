@@ -16,3 +16,4 @@
 ## general
 
 - Stop trying to duck-type everywhere; use strongly typed kernels everywhere and create factories for certain problems
+- purge all array casting and once again, enforce types in some convenience factories
