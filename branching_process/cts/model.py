@@ -73,11 +73,11 @@ def lam_hawkes(
     Intensity of Hawkes process given time series and parameters.
     Memory-hungry per default; could be improved with numba.
     """
-    ts = np.asfarray(ts).ravel()
+    ts = ts.ravel()
 
     if eval_ts is None:
         eval_ts = ts
-    eval_ts = np.asfarray(eval_ts).ravel()
+    eval_ts = eval_ts.ravel()
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = background.as_background_kernel(mu_kernel)
     if ((ts.size) * (eval_ts.size)) > max_floats:
