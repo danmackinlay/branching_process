@@ -79,15 +79,18 @@ class ContinuousExact(object):
             mu=packed[0],
         )
         if self._n_kappa_pack > 0:
-            unpacked['kappa'] = packed[1:self._n_kappa_pack+1]
-        if self._n_tau_pack > 0:
-            unpacked['tau'] = packed[
+            unpacked['kappa'] = packed[
+                1:
+                self._n_kappa_pack+1
+            ]
+        if self._n_omega_pack > 0:
+            unpacked['omega'] = packed[
                 self._n_kappa_pack + 1:
                 self._n_kappa_pack + self._n_omega_pack + 1
             ]
-        if self._n_omega_pack > 0:
-            unpacked = packed[
-                self._n_kappa_pack + self._n_omega_pack + 1:
+        if self._n_tau_pack > 0:
+            unpacked['tau'] = packed[
+                self._n_kappa_pack + self._n_omega_pack + 1
             ]
         return unpacked
 
@@ -289,8 +292,12 @@ class ContinuousExact(object):
             )
         if kappa is None:
             kappa = self.phi_kernel.get_param('kappa')
+            if kappa is not None:
+                kappa = np.ones_like(kappa)/kappa.size
         if omega is None:
             omega = self.mu_kernel.get_param('kappa')
+            if omega is not None:
+                omega = np.ones_like(omega)/omega.size
         if tau is None:
             tau = self.phi_kernel.get_param('tau')
         guess = dict(
