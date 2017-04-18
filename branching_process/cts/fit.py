@@ -46,30 +46,27 @@ class ContinuousExact(object):
             mu=None,
             kappa=None,
             tau=None,
-            omega=None
+            omega=None,
+            **kwargs
             ):
         """
         pack all params into one vector for blackbox optimisation;
         """
-        packed = np.zeros(
-            1 +
-            self._n_kappa_pack +
-            self._n_omega_pack +
-            self._n_tau_pack
-        )
-        packed[0] = mu if mu is not None else self.params['mu']
-
-        packed[
-            1:self._n_kappa_pack + 1
-        ] = kappa if kappa is not None else self.params['kappa']
-        packed[
-            self._n_kappa_pack + 1:
-            self._n_kappa_pack + self._n_omega_pack + 1
-        ] = omega if omega is not None else self.params['omega']
-        packed[
-            self._n_kappa_pack + self._n_omega_pack + 1:
-        ] = tau if tau is not None else self.params['tau']
-        return packed
+        mu = np.array(mu if mu is not None else self.params['mu']).ravel()
+        pre_packed = [mu]
+        if self._fit_kappa:
+            pre_packed.append((
+                kappa if kappa is not None else self.params['kappa']
+            ).ravel())
+        if self._fit_omega:
+            pre_packed.append((
+                omega if omega is not None else self.params['omega']
+            ).ravel())
+        if self._fit_tau:
+            pre_packed.append((
+                tau if tau is not None else self.params['tau']
+            ).ravel())
+        return np.concatenate(pre_packed)
 
     def _unpack(
             self,
@@ -82,16 +79,14 @@ class ContinuousExact(object):
         )
         if self._n_kappa_pack > 0:
             unpacked['kappa'] = packed[1:self._n_kappa_pack+1],
-
         if self._n_tau_pack > 0:
             unpacked['tau'] = packed[
-                self.n_phi_bases + 1:
-                self.n_phi_bases + self._n_tau_pack + 1
+                self._n_kappa_pack + 1:
+                self._n_kappa_pack + self._n_omega_pack + 1
             ]
-        # omega parameters - exogenous variation
         if self._n_omega_pack > 0:
             unpacked = packed[
-                self.n_phi_bases + self._n_tau_pack + 1:
+                self._n_kappa_pack + self._n_omega_pack + 1:
             ]
         return unpacked
 
@@ -211,9 +206,9 @@ class ContinuousExact(object):
         self._tau_bounds = [(0, None)] * self._n_tau_pack
         self._all_bounds = (
             self._mu_bounds +
-            self._n_kappa_pack +
-            self._n_omega_pack +
-            self._n_tau_pack
+            self._kappa_bounds +
+            self._omega_bounds +
+            self._tau_bounds
         )
 
     def _teardown_graphs(self):
@@ -335,7 +330,9 @@ class ContinuousExact(object):
     #     )
     #     return (g_negloglik + g_penalty) * penalty_dominated
     def obj_packed(self, x, other_params={}):
-
+        kwargs = dict(other_params)
+        kwargs.update(self._unpack(x))
+        return self.objective(**kwargs)
 
     def obj_mu(self, x, other_params={}):
         other_kwargs = dict(self.params)
@@ -370,6 +367,8 @@ class ContinuousExact(object):
             self.obj_tau, 0)
         self._grad_omega = autograd.grad(
             self.obj_omega, 0)
+        self._grad_packed = autograd.grad(
+            self.obj_packed, 0)
 
     def _fit_coordwise(
             self,
@@ -483,7 +482,7 @@ class ContinuousExact(object):
             **kwargs
             ):
         """
-        fit by truncated Newton in each coordinate group
+        fit by truncated Newton in all coordinates.
         """
         if not warm:
             self.params = self._guess_params(**kwargs)
@@ -493,90 +492,24 @@ class ContinuousExact(object):
         #     self._grad_negloglik, 0)
 
         fit = dict(**self.params)
-
-        for i in range(max_steps):
-            self._debug_print('fit', fit)
-            new_fit = {}
-            res = minimize(
-                self.obj_kappa,
-                x0=fit['kappa'],
-                args=(new_fit,),
-                method='TNC',
-                # method='L-BFGS-B',
-                jac=self._grad_kappa,
-                bounds=self._kappa_bounds,
-                callback=lambda x: self._debug_tee('kappa_fit', x),
-                options=dict(
-                    maxiter=step_iter,
-                    disp=self.debug
-                )
+        x0 = self._pack(**fit)
+        res = minimize(
+            self.obj_packed,
+            x0=x0,
+            args=(self.params,),
+            method='TNC',
+            # method='L-BFGS-B',
+            jac=self._grad_packed,
+            bounds=self._all_bounds,
+            callback=lambda x: self._debug_tee('packed_fit', x),
+            options=dict(
+                maxiter=step_iter,
+                disp=self.debug
             )
-            kappa = res.x
-            # from IPython.core.debugger import Tracer; Tracer()()
-            kappa[np.abs(kappa < self.tol)] = 0
-            new_fit['kappa'] = kappa
-            self._debug_print('new_fit', new_fit)
+        )
+        new_fit = self._unpack(res.x)
 
-            if self._fit_tau:
-                res = minimize(
-                    self.obj_tau,
-                    x0=fit['tau'],
-                    args=(new_fit,),
-                    method='L-BFGS-B',  # ?
-                    jac=self._grad_tau,
-                    bounds=self._tau_bounds,
-                    callback=lambda x: self._debug_tee('tau_fit', x),
-                    options=dict(
-                        maxiter=step_iter,
-                        disp=self.debug
-                    )
-                )
-                tau = res.x
-                new_fit['tau'] = tau
-                self._debug_print('new_fit', new_fit)
-
-            if self._fit_omega:
-                res = minimize(
-                    self.obj_omega,
-                    x0=fit['omega'],
-                    args=(new_fit,),
-                    method='TNC',
-                    jac=self._grad_omega,
-                    bounds=self._omega_bounds,
-                    callback=lambda x: self._debug_tee('omega_fit', x),
-                    options=dict(
-                        maxiter=step_iter,
-                        disp=self.debug
-                    )
-                )
-                omega = res.x
-                omega[np.abs(omega < self.tol)] = 0
-                new_fit['omega'] = omega
-                self._debug_print('new_fit', new_fit)
-
-            # one-step mu update is possible for known noise structure
-            # e.g. additive, but not in general. So let's not.
-            res = minimize(
-                self.obj_mu,
-                x0=fit['mu'],
-                args=(new_fit,),
-                method='TNC',
-                jac=self._grad_mu,
-                bounds=self._mu_bounds,
-                callback=lambda x: self._debug_tee('mu_fit', x),
-                options=dict(
-                    maxiter=step_iter,
-                    disp=self.debug
-                )
-            )
-            mu = res.x
-            new_fit['mu'] = mu
-            self._debug_print('new_fit', new_fit)
-
-            fit.update(new_fit)
-            self.params.update(fit)
-
-        return fit
+        self.params.update(new_fit)
 
 
 class FitHistory(object):

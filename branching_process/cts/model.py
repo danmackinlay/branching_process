@@ -173,7 +173,6 @@ def big_lam_hawkes(
 
 def loglik(
         ts,
-        phi=None,
         t_start=0.0,
         t_end=None,
         eval_ts=None,
