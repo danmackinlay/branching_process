@@ -5,8 +5,8 @@
 - make actual regression sparse
 - find optimum by some criterion
 - simulate arbitrary inconstant background rate by rejection sampling
-- check np.asfarray is not breaking things
 - check assignment is not breaking things
+- step influence kernel
 
 ## Interval censored problem
 
@@ -17,3 +17,5 @@
 
 - Stop trying to duck-type everywhere; use strongly typed kernels everywhere and create factories for certain problems
 - purge all array casting and once again, enforce types in some convenience factories
+- My API is already very close to Stan, but with some design flaws. I should switch to a python equivalent style such as Edward to facilitate simulation-based inference.
+- the background kernels could benefit from being written more like the foreground ones with tau params set accordingly

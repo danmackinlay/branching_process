@@ -43,6 +43,7 @@ class ConstKernel(BackgroundKernel):
 
     def __call__(self, t, *args, **kwargs):
         mu = self.get_params(**kwargs)['mu']
+
         return np.ones_like(t) * mu
 
     def integrate(self, t, *args, **kwargs):
