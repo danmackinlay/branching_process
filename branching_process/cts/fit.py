@@ -206,7 +206,7 @@ class ContinuousExact(object):
         self._fit_kappa = fit_kappa
         self.n_tau = self.n_phi_bases * self._fit_tau
         self.n_omega = self.n_mu_bases * self._fit_omega
-        self._mu_bounds = [(0, None)]
+        self._mu_bounds = [(tol, None)]
         self._kappa_bounds = [(0, 1)] * self.n_phi_bases
         self._tau_bounds = [(0, None)] * self.n_tau
         self._omega_bounds = [(0, None)] * self.n_omega
@@ -316,41 +316,29 @@ class ContinuousExact(object):
     #     )
     #     return (g_negloglik + g_penalty) * penalty_dominated
 
-    def obj_mu(self, x):
-        return self.objective(
-            mu=x,
-            kappa=self.params['kappa'],
-            tau=self.params['tau'],
-            omega=self.params['omega'],
-            pi_kappa=self.params['pi_kappa'],
-            pi_omega=self.params['pi_omega'])
+    def obj_mu(self, x, other_params):
+        other_kwargs = dict(self.params)
+        other_kwargs.update(other_params)
+        other_kwargs['mu'] = x
+        return self.objective(**other_kwargs)
 
-    def obj_kappa(self, x):
-        return self.objective(
-            mu=self.params['mu'],
-            kappa=x,
-            tau=self.params['tau'],
-            omega=self.params['omega'],
-            pi_kappa=self.params['pi_kappa'],
-            pi_omega=self.params['pi_omega'])
+    def obj_kappa(self, x, other_params):
+        other_kwargs = dict(self.params)
+        other_kwargs.update(other_params)
+        other_kwargs['kappa'] = x
+        return self.objective(**other_kwargs)
 
-    def obj_tau(self, x):
-        return self.objective(
-            mu=self.params['mu'],
-            kappa=self.params['kappa'],
-            tau=x,
-            omega=self.params['omega'],
-            pi_kappa=self.params['pi_kappa'],
-            pi_omega=self.params['pi_omega'])
+    def obj_tau(self, x, other_params):
+        other_kwargs = dict(self.params)
+        other_kwargs.update(other_params)
+        other_kwargs['tau'] = x
+        return self.objective(**other_kwargs)
 
-    def obj_omega(self, x):
-        return self.objective(
-            mu=self.params['mu'],
-            kappa=self.params['kappa'],
-            tau=self.params['tau'],
-            omega=x,
-            pi_kappa=self.params['pi_kappa'],
-            pi_omega=self.params['pi_omega'])
+    def obj_omega(self, x, other_params):
+        other_kwargs = dict(self.params)
+        other_kwargs.update(other_params)
+        other_kwargs['omega'] = x
+        return self.objective(**other_kwargs)
 
     def _setup_grad(self):
         self._grad_mu = autograd.grad(
@@ -381,12 +369,14 @@ class ContinuousExact(object):
         #     self._grad_negloglik, 0)
 
         fit = dict(**self.params)
+
         for i in range(max_steps):
             self._debug_print('fit', fit)
             new_fit = {}
             res = minimize(
                 self.obj_kappa,
-                fit['kappa'],
+                x0=fit['kappa'],
+                args=(new_fit,),
                 method='TNC',
                 # method='L-BFGS-B',
                 jac=self._grad_kappa,
@@ -401,11 +391,13 @@ class ContinuousExact(object):
             # from IPython.core.debugger import Tracer; Tracer()()
             kappa[np.abs(kappa < self.tol)] = 0
             new_fit['kappa'] = kappa
+            self._debug_print('new_fit', new_fit)
 
             if self._fit_tau:
                 res = minimize(
                     self.obj_tau,
-                    fit['tau'],
+                    x0=fit['tau'],
+                    args=(new_fit,),
                     method='L-BFGS-B',  # ?
                     jac=self._grad_tau,
                     bounds=self._tau_bounds,
@@ -417,11 +409,13 @@ class ContinuousExact(object):
                 )
                 tau = res.x
                 new_fit['tau'] = tau
+                self._debug_print('new_fit', new_fit)
 
             if self._fit_omega:
                 res = minimize(
                     self.obj_omega,
-                    fit['omega'],
+                    x0=fit['omega'],
+                    args=(new_fit,),
                     method='TNC',
                     jac=self._grad_omega,
                     bounds=self._omega_bounds,
@@ -434,12 +428,14 @@ class ContinuousExact(object):
                 omega = res.x
                 omega[np.abs(omega < self.tol)] = 0
                 new_fit['omega'] = omega
+                self._debug_print('new_fit', new_fit)
 
             # one-step mu update is possible for known noise structure
             # e.g. additive, but not in general. So let's not.
             res = minimize(
                 self.obj_mu,
-                fit['mu'],
+                x0=fit['mu'],
+                args=(new_fit,),
                 method='TNC',
                 jac=self._grad_mu,
                 bounds=self._mu_bounds,
@@ -451,6 +447,7 @@ class ContinuousExact(object):
             )
             mu = res.x
             new_fit['mu'] = mu
+            self._debug_print('new_fit', new_fit)
 
             fit.update(new_fit)
             self.params.update(fit)
