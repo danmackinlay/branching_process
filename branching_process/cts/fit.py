@@ -35,10 +35,12 @@ class ContinuousExact(object):
     def _debug_print(self, *args, **kwargs):
         if self.debug:
             print(*args, **kwargs)
+            print()
 
     def _debug_tee(self, label, obj):
         if self.debug:
             print(label, obj)
+            print()
         return obj
 
     def _pack(
@@ -150,12 +152,14 @@ class ContinuousExact(object):
             t_start=0.0,
             t_end=None,
             param_vector=None,
-            tol=1e-8,
+            tol=None,
             **kwargs):
 
-        self.tol = tol
         self._t_start = t_start
         self._t_end = t_end or ts[-1]
+        if tol is None:
+            tol = 1e-5 * ts.size / (self._t_end - self._t_start)
+        self.tol = tol
         self._ts = ts
         self._n_ts = ts[
             np.logical_and(
@@ -232,7 +236,7 @@ class ContinuousExact(object):
             fit_omega=False,
             t_start=0.0,
             t_end=None,
-            tol=1e-8,
+            tol=None,
             coordwise=False,
             **kwargs
             ):
@@ -498,7 +502,7 @@ class ContinuousExact(object):
 
     def _fit_simultaneous(
             self,
-            step_iter=25,
+            step_iter=100,
             eps=1e-8,
             warm=False,
             **kwargs
@@ -532,6 +536,8 @@ class ContinuousExact(object):
             )
         )
         new_fit = self._unpack(res.x)
+        new_fit['kappa'][np.abs(new_fit['kappa'] < self.tol)] = 0
+        new_fit['omega'][np.abs(new_fit['omega'] < self.tol)] = 0
         fit.update(new_fit)
         self.params.update(fit)
         return fit
