@@ -261,7 +261,15 @@ class ContinuousExact(object):
             **kwargs
             ):
         """
-        fit by truncated Newton in each coordinate group
+        guess initialization params.
+        Right now this inspects the kernels for defaults.
+
+        This needs to be done better,
+        since it is too easy to leak the true values into the fit
+        from the simulation and to thus get
+        unnaturally good results.
+
+        TODO: mitigate this risk by not even requiring params unnecessarily
         """
         if tau is None:
             tau = self.phi_kernel.get_param('tau')
