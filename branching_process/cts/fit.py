@@ -316,25 +316,25 @@ class ContinuousExact(object):
     #     )
     #     return (g_negloglik + g_penalty) * penalty_dominated
 
-    def obj_mu(self, x, other_params):
+    def obj_mu(self, x, other_params={}):
         other_kwargs = dict(self.params)
         other_kwargs.update(other_params)
         other_kwargs['mu'] = x
         return self.objective(**other_kwargs)
 
-    def obj_kappa(self, x, other_params):
+    def obj_kappa(self, x, other_params={}):
         other_kwargs = dict(self.params)
         other_kwargs.update(other_params)
         other_kwargs['kappa'] = x
         return self.objective(**other_kwargs)
 
-    def obj_tau(self, x, other_params):
+    def obj_tau(self, x, other_params={}):
         other_kwargs = dict(self.params)
         other_kwargs.update(other_params)
         other_kwargs['tau'] = x
         return self.objective(**other_kwargs)
 
-    def obj_omega(self, x, other_params):
+    def obj_omega(self, x, other_params={}):
         other_kwargs = dict(self.params)
         other_kwargs.update(other_params)
         other_kwargs['omega'] = x
