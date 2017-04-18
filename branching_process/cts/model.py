@@ -22,12 +22,18 @@ from . import influence
 from . import background
 
 
-def _as_mu_args(mu=None, omega=None, tau=None, **kwargs):
+def _as_mu_args(
+        mu=None,
+        omega=None,
+        tau=None,
+        # _default={},
+        **kwargs):
     """
     utility function to convert model arguments to kernel arguments.
-    This renames omga and mu, and *ignores* tau.
+    This renames omega and mu, and *deletes* tau.
     """
-    kwargs = dict(mu=mu, **kwargs)
+    kwargs = dict(**kwargs)
+    # kwargs.setdefault(**_default)
     if omega is not None:
         kwargs['kappa'] = omega
     if mu is not None:
@@ -35,11 +41,18 @@ def _as_mu_args(mu=None, omega=None, tau=None, **kwargs):
     return kwargs
 
 
-def _as_phi_args(kappa=None, tau=None, **kwargs):
+def _as_phi_args(
+        kappa=None,
+        tau=None,
+        # _default={},
+        **kwargs):
     """
     utility function to convert model arguments to kernel arguments
     """
-    kwargs = dict(kappa=kappa, **kwargs)
+    kwargs = dict(**kwargs)
+    # kwargs.setdefault(**_default)
+    if kappa is not None:
+        kwargs['kappa'] = kappa
     if tau is not None:
         kwargs['tau'] = tau
     return kwargs
@@ -63,7 +76,6 @@ def lam(
 
 def lam_hawkes(
         ts,
-        mu=0.0,
         eval_ts=None,
         max_floats=1e8,
         phi_kernel=None,
@@ -78,6 +90,7 @@ def lam_hawkes(
     if eval_ts is None:
         eval_ts = ts
     eval_ts = eval_ts.ravel()
+
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = background.as_background_kernel(mu_kernel)
     if ((ts.size) * (eval_ts.size)) > max_floats:
@@ -88,7 +101,8 @@ def lam_hawkes(
             eval_ts=eval_ts,
             **kwargs
         )
-    mu_kwargs = _as_mu_args(mu=mu, **kwargs)
+
+    mu_kwargs = _as_mu_args(**kwargs)
     phi_kwargs = _as_phi_args(**kwargs)
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
@@ -116,7 +130,7 @@ def _lam_hawkes_lite(
     Uses assignment so may need to be altered for differentiability.
     """
     endo = np.zeros_like(eval_ts)
-    mu_kwargs = _as_mu_args(mu=mu, **kwargs)
+    mu_kwargs = _as_mu_args(**kwargs)
     phi_kwargs = _as_phi_args(**kwargs)
     for i in range(eval_ts.size):
         deltas = eval_ts[i] - ts
@@ -129,7 +143,6 @@ def _lam_hawkes_lite(
 def big_lam_hawkes(
         ts,
         eval_ts,
-        mu=1.0,
         t_start=0.0,
         mu_kernel=None,
         phi_kernel=None,
@@ -143,7 +156,7 @@ def big_lam_hawkes(
     phi_kernel = influence.as_influence_kernel(phi_kernel)
     mu_kernel = background.as_background_kernel(mu_kernel)
     ts = np.asfarray(ts).ravel()
-    mu_kwargs = _as_mu_args(mu=mu, **kwargs)
+    mu_kwargs = _as_mu_args(**kwargs)
     phi_kwargs = _as_phi_args(**kwargs)
     deltas = eval_ts.reshape(1, -1) - ts.reshape(-1, 1)
     mask = deltas > 0.0
@@ -161,7 +174,6 @@ def big_lam_hawkes(
 def loglik(
         ts,
         phi=None,
-        mu=1.0,
         t_start=0.0,
         t_end=None,
         eval_ts=None,
@@ -183,7 +195,6 @@ def loglik(
 
     lam = lam_hawkes(
         ts=ts,
-        mu=mu,
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
         eval_ts=eval_ts,
@@ -191,7 +202,6 @@ def loglik(
     )
     big_lam = big_lam_hawkes(
         ts=ts,
-        mu=mu,
         phi_kernel=phi_kernel,
         mu_kernel=mu_kernel,
         t_start=t_start,

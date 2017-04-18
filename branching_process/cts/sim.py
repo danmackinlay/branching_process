@@ -169,7 +169,7 @@ def sim_inhom_clusters(
 
 def sim_branching(
         immigrants,
-        phi,
+        phi_kernel,
         max_gen=150,  # That's a *lot*
         t_end=np.inf):
     """
@@ -200,7 +200,7 @@ def sim_branching(
     :rtype: numpy.array
     """
 
-    phi_kernel = influence.as_influence_kernel(phi)
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
     Tnext = np.asfarray(immigrants)
     allT = [np.array([])]
 
@@ -226,8 +226,8 @@ def sim_branching(
 
 
 def sim_hawkes(
-        phi,
-        mu=1.0,
+        phi_kernel,
+        mu_kernel=1.0,
         t_start=0.0,
         t_end=100.0,
         immigrants=None,
@@ -263,12 +263,13 @@ def sim_hawkes(
         immigrants = np.array([])
     else:
         immigrants = np.asfarray(immigrants)
+    phi_kernel = influence.as_influence_kernel(phi_kernel)
+    mu_kernel = background.as_background_kernel(mu_kernel)
 
-    mu = background.as_background_kernel(mu)
     immigrants = np.append(
         immigrants,
         sim_kernel(
-            background_kernel=mu,
+            background_kernel=mu_kernel,
             t_start=t_start,
             t_end=t_end)
     )
@@ -277,7 +278,7 @@ def sim_hawkes(
         immigrants,
         sim_branching(
             immigrants=immigrants,
-            phi=phi,
+            phi_kernel=phi_kernel,
             t_end=t_end,
             **kwargs
         )

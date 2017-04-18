@@ -18,11 +18,11 @@ class BackgroundKernel(InfluenceKernel):
             self,
             n_bases=0,
             kappa=None,
-            *args, **fixed_args):
-        self._default_kwargs = fixed_args
-        self._default_kwargs.setdefault(
+            *args, **fixed_kwargs):
+        self._fixed_kwargs = fixed_kwargs
+        self._fixed_kwargs.setdefault(
             'kappa',
-            kappa if kappa is not None else np.ones(n_bases))
+            kappa if kappa is not None else np.zeros(n_bases))
         self.n_bases = n_bases
         # super(BackgroundKernel, self).__init__(*args)
 
@@ -35,11 +35,11 @@ class ConstKernel(BackgroundKernel):
     def __init__(
             self,
             *args,
-            **fixed_args
+            **fixed_kwargs
             ):
         super(ConstKernel, self).__init__(
             n_bases=0,
-            *args, **fixed_args)
+            *args, **fixed_kwargs)
 
     def __call__(self, t, *args, **kwargs):
         mu = self.get_params(**kwargs)['mu']
@@ -60,26 +60,26 @@ class StepKernel(BackgroundKernel):
             t_end=None,
             n_bases=None,
             *args,
-            **fixed_args
+            **fixed_kwargs
             ):
         if t_end is None:
-            t_end = fixed_args.get('tau', [0, 100])[-1]
+            t_end = fixed_kwargs.get('tau', [0, 100])[-1]
         self.t_end = t_end
         if n_bases is None:
-            if fixed_args.get('tau', None) is not None:
-                n_bases = np.asarray(fixed_args.get('tau')).size - 1
-            elif fixed_args.get('kappa', None) is not None:
-                n_bases = np.asarray(fixed_args.get('kappa')).size
+            if fixed_kwargs.get('tau', None) is not None:
+                n_bases = np.asarray(fixed_kwargs.get('tau')).size - 1
+            elif fixed_kwargs.get('kappa', None) is not None:
+                n_bases = np.asarray(fixed_kwargs.get('kappa')).size
             else:
                 n_bases = 100
         self.n_bases = n_bases
-        fixed_args.setdefault(
+        fixed_kwargs.setdefault(
             'tau',
             np.linspace(0, t_end, n_bases+1, endpoint=True)
         )
         super(StepKernel, self).__init__(
             n_bases=n_bases,
-            *args, **fixed_args)
+            *args, **fixed_kwargs)
 
     def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)

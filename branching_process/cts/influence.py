@@ -14,10 +14,10 @@ class InfluenceKernel(object):
     def __init__(
             self,
             n_bases=1,
-            *args, **fixed_args):
-        self._default_kwargs = fixed_args
-        self._default_kwargs.setdefault('kappa', np.ones(n_bases)/n_bases)
-        self._default_kwargs.setdefault('tau', np.arange(n_bases)+1)
+            *args, **fixed_kwargs):
+        self._fixed_kwargs = fixed_kwargs
+        self._fixed_kwargs.setdefault('kappa', np.ones(n_bases)/n_bases)
+        self._fixed_kwargs.setdefault('tau', np.arange(n_bases)+1)
         self.n_bases = n_bases
         super(InfluenceKernel, self).__init__(*args)
 
@@ -25,7 +25,7 @@ class InfluenceKernel(object):
         return self.get_params(**kwargs).get(key, fallback)
 
     def get_params(self, **kwargs):
-        new_kwargs = dict(**self._default_kwargs)
+        new_kwargs = dict(**self._fixed_kwargs)
         for key, val in kwargs.items():
             if val is not None:
                 new_kwargs[key] = val
@@ -146,12 +146,12 @@ class GenericKernel(InfluenceKernel):
             majorant=None,
             integral=None,
             *args,
-            **fixed_args
+            **fixed_kwargs
             ):
         self._kernel = kernel
         self._majorant = majorant if majorant is not None else kernel
         self._integrate = integral
-        super(GenericKernel, self).__init__(*args, **fixed_args)
+        super(GenericKernel, self).__init__(*args, **fixed_kwargs)
 
 
 def as_influence_kernel(
