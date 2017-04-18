@@ -352,8 +352,8 @@ class ContinuousExact(object):
 
     def _fit(
             self,
-            max_steps=3,
-            step_iter=15,
+            max_steps=10,
+            step_iter=25,
             eps=1e-8,
             warm=False,
             **kwargs
