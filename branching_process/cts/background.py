@@ -20,9 +20,12 @@ class BackgroundKernel(InfluenceKernel):
             kappa=None,
             *args, **fixed_kwargs):
         self._fixed_kwargs = fixed_kwargs
-        self._fixed_kwargs.setdefault(
-            'kappa',
-            kappa if kappa is not None else np.zeros(n_bases))
+        if kappa is None and n_bases > 0:
+            kappa = np.zeros(n_bases)
+        if kappa is not None:
+            self._fixed_kwargs.setdefault(
+                'kappa', kappa
+            )
         self.n_bases = n_bases
         # super(BackgroundKernel, self).__init__(*args)
 

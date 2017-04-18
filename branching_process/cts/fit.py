@@ -67,6 +67,7 @@ class ContinuousExact(object):
                 tau if tau is not None else self.params['tau']
             ).ravel())
         return np.concatenate(pre_packed)
+        # self._debug_print('pk {!r}'.format(res))
 
     def _unpack(
             self,
@@ -78,7 +79,7 @@ class ContinuousExact(object):
             mu=packed[0],
         )
         if self._n_kappa_pack > 0:
-            unpacked['kappa'] = packed[1:self._n_kappa_pack+1],
+            unpacked['kappa'] = packed[1:self._n_kappa_pack+1]
         if self._n_tau_pack > 0:
             unpacked['tau'] = packed[
                 self._n_kappa_pack + 1:
@@ -194,8 +195,8 @@ class ContinuousExact(object):
 
         self.mu_kernel = mu_kernel
         self.n_mu_bases = mu_kernel.n_bases
-        self._fit_tau = fit_tau
-        self._fit_omega = fit_omega
+        self._fit_tau = fit_tau if self.n_mu_bases > 0 else False
+        self._fit_omega = fit_omega if self.n_mu_bases > 0 else False
         self._fit_kappa = fit_kappa
         self._n_kappa_pack = self.n_phi_bases * self._fit_kappa
         self._n_omega_pack = self.n_mu_bases * self._fit_omega
@@ -277,29 +278,34 @@ class ContinuousExact(object):
 
         TODO: mitigate this risk by not even requiring params unnecessarily
         """
-        if tau is None:
-            tau = self.phi_kernel.get_param('tau')
-        if omega is None:
-            omega = self.mu_kernel.get_param('kappa')
-        if kappa is None:
-            kappa = self.phi_kernel.get_param('kappa')
         if mu is None:
             # We'd like to choose mu=0 as a guess
             # but this doesn't work for multiplicative background noise
-            # So we choose a low background intensity of the correct order
+            # So we choose a  background intensity of the correct order
             # of magnitude, so that kappa is not negative for the first round.
             mu = self.mu_kernel.get_param(
                 'mu',
-                self._n_ts/(self._t_end - self._t_start) * 0.1
+                self._n_ts/(self._t_end - self._t_start) * 0.9
             )
-        return dict(
+        if kappa is None:
+            kappa = self.phi_kernel.get_param('kappa')
+        if omega is None:
+            omega = self.mu_kernel.get_param('kappa')
+        if tau is None:
+            tau = self.phi_kernel.get_param('tau')
+        guess = dict(
             mu=mu,
-            kappa=kappa,
-            tau=tau,
-            omega=omega,
             pi_omega=pi_omega,
             pi_kappa=pi_kappa,
         )
+        if mu is not None:
+            guess['mu'] = mu
+        if omega is not None:
+            guess['omega'] = omega
+        if kappa is not None:
+            guess['kappa'] = kappa
+
+        return guess
 
     def objective(
             self,
@@ -369,6 +375,15 @@ class ContinuousExact(object):
             self.obj_omega, 0)
         self._grad_packed = autograd.grad(
             self.obj_packed, 0)
+        # self.___grad_packed = autograd.grad(
+        #     self.obj_packed, 0)
+        #
+        # def _(x, *args, **kwargs):
+        #     print('xg', x)
+        #     g = self.___grad_packed(x, *args, **kwargs)
+        #     print('gg', g)
+        #     return g
+        # self._grad_packed = _
 
     def _fit_coordwise(
             self,
@@ -493,6 +508,8 @@ class ContinuousExact(object):
 
         fit = dict(**self.params)
         x0 = self._pack(**fit)
+        self._debug_print('fit {!r}/{}'.format(fit, x0))
+
         res = minimize(
             self.obj_packed,
             x0=x0,
@@ -508,8 +525,9 @@ class ContinuousExact(object):
             )
         )
         new_fit = self._unpack(res.x)
-
-        self.params.update(new_fit)
+        fit.update(new_fit)
+        self.params.update(fit)
+        return fit
 
 
 class FitHistory(object):
