@@ -402,6 +402,7 @@ class ContinuousExact(object):
             step_iter=25,
             eps=1e-8,
             warm=False,
+            method='TNC',  # or 'L-BFGS-B'
             **kwargs
             ):
         """
@@ -423,7 +424,7 @@ class ContinuousExact(object):
                 self.obj_kappa,
                 x0=fit['kappa'],
                 args=(new_fit,),
-                method='TNC',
+                method=method,
                 # method='L-BFGS-B',
                 jac=self._grad_kappa,
                 bounds=self._kappa_bounds,
@@ -462,7 +463,7 @@ class ContinuousExact(object):
                     self.obj_omega,
                     x0=fit['omega'],
                     args=(new_fit,),
-                    method='TNC',
+                    method=method,
                     jac=self._grad_omega,
                     bounds=self._omega_bounds,
                     callback=lambda x: self._debug_tee('omega_fit', x),
@@ -482,7 +483,7 @@ class ContinuousExact(object):
                 self.obj_mu,
                 x0=fit['mu'],
                 args=(new_fit,),
-                method='TNC',
+                method=method,
                 jac=self._grad_mu,
                 bounds=self._mu_bounds,
                 callback=lambda x: self._debug_tee('mu_fit', x),
@@ -505,6 +506,7 @@ class ContinuousExact(object):
             step_iter=100,
             eps=1e-8,
             warm=False,
+            method='TNC',  # or 'L-BFGS-B'
             **kwargs
             ):
         """
@@ -525,8 +527,7 @@ class ContinuousExact(object):
             self.obj_packed,
             x0=x0,
             args=(self.params,),
-            method='TNC',
-            # method='L-BFGS-B',
+            method=method,
             jac=self._grad_packed,
             bounds=self._all_bounds,
             callback=lambda x: self._debug_tee('packed_fit', x),
