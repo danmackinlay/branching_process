@@ -22,3 +22,4 @@
 - improve initial guess to not
   - require guesses for params that will not be fit
   - too-easily leak values from re-used kernels
+- tolerance calcs need to be more principled for kappa and omega
