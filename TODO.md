@@ -7,6 +7,7 @@
 - simulate arbitrary inconstant background rate by rejection sampling
 - check assignment is not breaking things
 - step influence kernel
+- better omega init
 
 ## Interval censored problem
 
