@@ -507,6 +507,7 @@ class ContinuousExact(object):
             eps=1e-8,
             warm=False,
             method='TNC',  # or 'L-BFGS-B'
+            refit_mu=True,
             **kwargs
             ):
         """
@@ -540,6 +541,26 @@ class ContinuousExact(object):
         new_fit['kappa'][np.abs(new_fit['kappa'] < self.tol)] = 0
         new_fit['omega'][np.abs(new_fit['omega'] < self.tol)] = 0
         fit.update(new_fit)
+        if refit_mu:
+            # one-step mu update is possible for known noise structure
+            # e.g. additive, but not in general. So let's not.
+            res = minimize(
+                self.obj_mu,
+                x0=fit['mu'],
+                args=(new_fit,),
+                method=method,
+                jac=self._grad_mu,
+                bounds=self._mu_bounds,
+                callback=lambda x: self._debug_tee('mu_fit', x),
+                options=dict(
+                    maxiter=step_iter,
+                    disp=self.debug
+                )
+            )
+            mu = res.x
+            new_fit['mu'] = mu
+            self._debug_print('new_fit', new_fit)
+
         self.params.update(fit)
         return fit
 

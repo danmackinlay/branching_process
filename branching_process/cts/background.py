@@ -88,7 +88,7 @@ class StepKernel(BackgroundKernel):
     def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        return np.maximum(kappa + mu, 0)
+        return np.maximum((kappa+1) * mu, 0)
 
     def __call__(self, t, *args, **kwargs):
         """
