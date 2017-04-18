@@ -208,6 +208,7 @@ def loglik(
         eval_ts=np.array(t_end),
         **kwargs
     )
-    # from IPython.core.debugger import Tracer; Tracer()()
+    if not np.isfinite(np.sum(np.log(lam)) - big_lam):
+        from IPython.core.debugger import Tracer; Tracer()()
 
     return np.sum(np.log(lam)) - big_lam
