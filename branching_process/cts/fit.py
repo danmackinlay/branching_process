@@ -148,6 +148,7 @@ class ContinuousExact(object):
             n_mu_bases=0,
             fit_tau=False,
             fit_omega=False,
+            fit_kappa=True,
             t_start=0.0,
             t_end=None,
             param_vector=None,
@@ -238,6 +239,10 @@ class ContinuousExact(object):
             n_mu_bases=n_mu_bases,
             fit_tau=fit_tau,
             fit_omega=fit_omega,
+            fit_kappa=fit_kappa,
+            t_start=t_start,
+            t_end=t_end,
+            param_vector=None,
             tol=tol,
             **kwargs
         )
