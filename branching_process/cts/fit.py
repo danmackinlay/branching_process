@@ -96,7 +96,7 @@ class ContinuousExact(object):
             ]
         return unpacked
 
-    def negloglik_loss(
+    def negloglik(
             self,
             **kwargs):
 
@@ -110,34 +110,70 @@ class ContinuousExact(object):
             **kwargs
         )
 
-    def _penalty_weight_packed(
-            self,
-            pi_kappa=0.0,
-            pi_omega=1e-8,
-            **kwargs
-            ):
-        return self._pack(
-            mu=0.0,
-            kappa=pi_kappa,
-            omega=pi_omega
-        )  # / self.penalty_scale
-
     def penalty(
             self,
-            mu=1.0,
-            kappa=0.0,
-            tau=1.0,
-            omega=0.0,
+            kappa=None,
+            tau=None,
+            omega=None,
             pi_kappa=0.0,
             pi_omega=0.0,
             **kwargs
             ):
+        if kappa is None:
+            kappa = self.phi_kernel.get_param('kappa')
+        if omega is None:
+            omega = self.mu_kernel.get_param('kappa')
+
         # 2 different l_1 penalties
-        return np.sum(
-            np.abs(kappa) * pi_kappa
-        ) + np.sum(
-            np.abs(omega) * pi_omega
-        )
+        pen = 0
+        if self._fit_kappa:
+            pen = pen + np.sum(
+                np.abs(kappa) * pi_kappa
+            )
+        if self._fit_omega:
+            pen = pen + np.sum(
+                np.abs(omega) * pi_omega
+            )
+        return pen
+
+    def dof(self,
+            mu=None,
+            kappa=None,
+            tau=None,
+            omega=None,
+            **kwargs):
+        if kappa is None:
+            kappa = self.phi_kernel.get_param('kappa')
+        if omega is None:
+            omega = self.mu_kernel.get_param('kappa')
+        if tau is None:
+            tau = self.phi_kernel.get_param('tau')
+        dof = 1  # mu
+        if self._fit_tau:
+            dof = dof + tau.size
+        if self._fit_kappa:
+            dof = dof + np.sum(
+                np.abs(kappa) > self.tol
+            )
+        if self._fit_omega:
+            dof = dof + np.sum(
+                np.abs(omega) > self.tol
+            )
+        return dof
+
+    def aic(self, method='aicc', negloglik=None, **kwargs):
+        method = str.lower(method)
+        dof = self.dof(**kwargs)
+        if negloglik is None:
+            negloglik = self.negloglik(**kwargs)
+        if method == 'aic':
+            return 2.0 * dof + 2.0 * negloglik
+        elif method == 'aicc':
+            return (
+                2.0 * dof + 2.0 * negloglik
+            ) + 2.0 * dof * (dof + 1) / max(self._n_ts-dof-1, 1)
+        elif method == 'bic':
+            return dof * np.log(self._n_ts) + 2.0 * negloglik
 
     def _setup_graphs(
             self,
@@ -330,7 +366,7 @@ class ContinuousExact(object):
     def objective(
             self,
             **kwargs):
-        loss_negloglik = self.negloglik_loss(
+        loss_negloglik = self.negloglik(
             **kwargs
         )
         loss_penalty = self.penalty(
@@ -339,22 +375,6 @@ class ContinuousExact(object):
         # self._debug_print('insobj', loss_negloglik, loss_penalty)
         return (loss_negloglik + loss_penalty)
 
-    # def grad_objective(
-    #         self,
-    #         **kwargs):
-    #     g_negloglik = self.g_negloglik(
-    #         **kwargs
-    #     )
-    #     g_penalty = self.g_penalty(
-    #         **kwargs
-    #     )
-    #     # this isn't quite right - only applies at 0
-    #     penalty_dominated = np.abs(
-    #         g_negloglik
-    #     ) < (
-    #         g_penalty
-    #     )
-    #     return (g_negloglik + g_penalty) * penalty_dominated
     def obj_packed(self, x, other_params={}):
         kwargs = dict(other_params)
         kwargs.update(self._unpack(x))
@@ -508,7 +528,12 @@ class ContinuousExact(object):
             fit.update(new_fit)
             self.params.update(fit)
 
-        return fit
+        self.params['negloglik'] = self.negloglik(**self.params)
+        self.params['dof'] = self.dof(**self.params)
+        self.params['aic'] = self.aic(method='aic', **self.params)
+        self.params['bic'] = self.aic(method='bic', **self.params)
+        self.params['aicc'] = self.aic(method='aicc', **self.params)
+        return self.params
 
     def _fit_simultaneous(
             self,
@@ -572,7 +597,12 @@ class ContinuousExact(object):
             fit.update(new_fit)
 
         self.params.update(fit)
-        return fit
+        self.params['negloglik'] = self.negloglik(**self.params)
+        self.params['dof'] = self.dof(**self.params)
+        self.params['aic'] = self.aic(method='aic', **self.params)
+        self.params['bic'] = self.aic(method='bic', **self.params)
+        self.params['aicc'] = self.aic(method='aicc', **self.params)
+        return self.params
 
 
 class FitHistory(object):
