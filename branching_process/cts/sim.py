@@ -14,15 +14,15 @@ def sim_kernel(
 
     """
     background_kernel = background.as_background_kernel(background_kernel)
-    if isinstance(background_kernel, background.ConstKernel):
-        return sim_const(
-            background_kernel.get_param('mu', **kwargs),
-            **kwargs
-        )
-    elif isinstance(background_kernel, background.StepKernel):
+    if isinstance(background_kernel, background.StepKernel):
         return sim_piecewise_const(
             background_kernel.f_kappa(),
             background_kernel.get_param('tau', **kwargs)
+        )
+    elif isinstance(background_kernel, background.ConstKernel):
+        return sim_const(
+            background_kernel.get_param('mu', **kwargs),
+            **kwargs
         )
 
 

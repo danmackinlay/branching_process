@@ -572,29 +572,48 @@ class ContinuousExact(object):
             )
         )
         new_fit = self._unpack(res.x)
-        new_fit['kappa'][np.abs(new_fit['kappa'] < self.tol)] = 0
-        new_fit['omega'][np.abs(new_fit['omega'] < self.tol)] = 0
-        fit.update(new_fit)
+        jac = res.jac
+
+        # We can improve convergence by taking
+        # analytic shortcuts for wide, low
+        # mu kernel params
         if refit_mu:
-            # one-step mu update is possible for known noise structure
-            # e.g. additive, but not in general. So, brute force.
-            res = minimize(
-                self.obj_mu,
-                x0=fit['mu'],
-                args=(new_fit,),
-                method=method,
-                jac=self._grad_mu,
-                bounds=self._mu_bounds,
-                callback=lambda x: self._debug_tee('mu_fit', x),
-                options=dict(
-                    maxiter=step_iter,
-                    disp=self.debug
+            if not hasattr(self.mu_kernel, 'guess_params'):
+                # brute force version:
+                res = minimize(
+                    self.obj_mu,
+                    x0=fit['mu'],
+                    args=(new_fit,),
+                    method=method,
+                    jac=self._grad_mu,
+                    bounds=self._mu_bounds,
+                    callback=lambda x: self._debug_tee('mu_fit', x),
+                    options=dict(
+                        maxiter=step_iter,
+                        disp=self.debug
+                    )
                 )
-            )
-            mu = res.x
-            new_fit['mu'] = mu
-            self._debug_print('new_fit', new_fit)
-            fit.update(new_fit)
+                mu = res.x
+                new_fit['mu'] = mu
+                self._debug_print('new_fit', new_fit)
+                jac[0] = res.jac
+            else:
+                guess_kwargs = dict(mu=new_fit['mu'])
+                if self._fit_omega:
+                    guess_kwargs['kappa'] = new_fit['omega']
+                partial_fit = self._debug_tee(
+                    'one_step_mu',
+                    self.mu_kernel.guess_params(**guess_kwargs)
+                )
+                if self._fit_omega:
+                    new_fit['omega'] = partial_fit['kappa']
+                new_fit['mu'] = partial_fit['mu']
+
+        if self._fit_kappa:
+            new_fit['kappa'][np.abs(new_fit['kappa'] < self.tol)] = 0
+        if self._fit_omega:
+            new_fit['omega'][np.abs(new_fit['omega'] < self.tol)] = 0
+        fit.update(new_fit)
 
         self.params.update(fit)
         self.params['negloglik'] = self.negloglik(**self.params)
@@ -602,6 +621,8 @@ class ContinuousExact(object):
         self.params['aic'] = self.aic(method='aic', **self.params)
         self.params['bic'] = self.aic(method='bic', **self.params)
         self.params['aicc'] = self.aic(method='aicc', **self.params)
+        self.params['jac'] = jac  # for diagnosis
+        self.params['penalty'] = self.penalty(**self.params)  # for diagnosis
         return self.params
 
 

@@ -1,5 +1,5 @@
 """
-BackgroundKernel is *like* InfluenceKernel, but not necessarily integrable
+Background kernels are *like* InfluenceKernel, but not necessarily integrable
 and there is no support for differentiationg with respect to time.
 """
 
@@ -13,7 +13,7 @@ except ImportError as e:
     import numpy as np
 
 
-class BackgroundKernel(InfluenceKernel):
+class ConstKernel(InfluenceKernel):
     def __init__(
             self,
             n_bases=0,
@@ -29,7 +29,7 @@ class BackgroundKernel(InfluenceKernel):
             )
         self.eps = eps
         self.n_bases = n_bases
-        # super(BackgroundKernel, self).__init__(*args)
+        # super(ConstKernel, self).__init__(*args)
 
     def mu_bounds(self):
         return [(self.eps, None)]
@@ -37,20 +37,19 @@ class BackgroundKernel(InfluenceKernel):
     def kappa_bounds(self):
         return [(None, None)] * self.n_bases
 
+    def f_kappa(self, **kwargs):
+        mu = self.get_param('mu', 0.0, **kwargs)
+        return np.maximum(mu, self.eps)
 
-class ConstKernel(BackgroundKernel):
-    """
-    Constant rate.
-    This is presumably for background rate modelling.
-    """
-    def __init__(
-            self,
-            *args,
-            **fixed_kwargs
-            ):
-        super(ConstKernel, self).__init__(
-            n_bases=0,
-            *args, **fixed_kwargs)
+    def guess_params(self, **kwargs):
+        # from IPython.core.debugger import Tracer; Tracer()()
+        return self.guess_params_intensity(self.f_kappa(**kwargs))
+
+    def guess_params_intensity(self, f_kappa_hat):
+        med = np.mean(f_kappa_hat)
+        return dict(
+            mu=med
+        )
 
     def __call__(self, t, *args, **kwargs):
         mu = self.get_params(**kwargs)['mu']
@@ -61,7 +60,7 @@ class ConstKernel(BackgroundKernel):
         return t * mu
 
 
-class StepKernel(BackgroundKernel):
+class StepKernel(ConstKernel):
     """
     Piecewise-constant rate.
     This is presumably for background rate modelling.
@@ -95,7 +94,14 @@ class StepKernel(BackgroundKernel):
     def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        return np.maximum(kappa + mu, 0)
+        return np.maximum(kappa + mu, self.eps)
+
+    def guess_params_intensity(self, f_kappa_hat):
+        med = np.median(f_kappa_hat)
+        return dict(
+            mu=med,
+            kappa=f_kappa_hat-med
+        )
 
     def __call__(self, t, *args, **kwargs):
         """
@@ -154,13 +160,21 @@ class MultiplicativeStepKernel(StepKernel):
     Piecewise-constant rate.
     This is presumably for background rate modelling.
     """
-    def kappa_bounds(self):
-        return [(-1, None)] * self.n_bases
+    # def kappa_bounds(self):
+    #     return [(-1, None)] * self.n_bases
 
     def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        return (np.maximum(kappa + 1, 0)) * mu
+        return (np.maximum(kappa + 1, self.eps)) * mu
+
+    def guess_params_intensity(self, f_kappa_hat):
+        # Is this correct?
+        med = np.median(f_kappa_hat)
+        return dict(
+            mu=med,
+            kappa=f_kappa_hat/med - 1
+        )
 
 
 class LogStepKernel(StepKernel):
@@ -175,6 +189,14 @@ class LogStepKernel(StepKernel):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
         return mu * np.exp(kappa)
+
+    def guess_params_intensity(self, f_kappa_hat):
+        # Is this correct?
+        med = np.median(f_kappa_hat)
+        return dict(
+            mu=med,
+            kappa=np.log(f_kappa_hat/med)
+        )
 
 
 def as_background_kernel(

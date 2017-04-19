@@ -8,7 +8,6 @@
 - check assignment is not breaking things
 - step influence kernel
 - better omega init
-- one-step mu-fit
 
 ## Interval censored problem
 
