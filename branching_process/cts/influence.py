@@ -14,12 +14,20 @@ class InfluenceKernel(object):
     def __init__(
             self,
             n_bases=1,
+            eps=1e-8,
             *args, **fixed_kwargs):
         self._fixed_kwargs = fixed_kwargs
         self._fixed_kwargs.setdefault('kappa', np.ones(n_bases)/n_bases)
         self._fixed_kwargs.setdefault('tau', np.arange(n_bases)+1)
         self.n_bases = n_bases
+        self.eps = eps
         super(InfluenceKernel, self).__init__(*args)
+
+    def kappa_bounds(self):
+        return [(0, 1)] * self.n_bases
+
+    def tau_bounds(self):
+        return [(self.eps, None)] * self.n_bases
 
     def get_param(self, key, fallback=None, **kwargs):
         return self.get_params(**kwargs).get(key, fallback)

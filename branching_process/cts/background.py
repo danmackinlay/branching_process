@@ -18,6 +18,7 @@ class BackgroundKernel(InfluenceKernel):
             self,
             n_bases=0,
             kappa=None,
+            eps=1e-8,
             *args, **fixed_kwargs):
         self._fixed_kwargs = fixed_kwargs
         if kappa is None and n_bases > 0:
@@ -26,8 +27,15 @@ class BackgroundKernel(InfluenceKernel):
             self._fixed_kwargs.setdefault(
                 'kappa', kappa
             )
+        self.eps = eps
         self.n_bases = n_bases
         # super(BackgroundKernel, self).__init__(*args)
+
+    def mu_bounds(self):
+        return [(self.eps, None)]
+
+    def kappa_bounds(self):
+        return [(0, None)] * self.n_bases
 
 
 class ConstKernel(BackgroundKernel):
@@ -46,7 +54,6 @@ class ConstKernel(BackgroundKernel):
 
     def __call__(self, t, *args, **kwargs):
         mu = self.get_params(**kwargs)['mu']
-
         return np.ones_like(t) * mu
 
     def integrate(self, t, *args, **kwargs):
@@ -88,7 +95,7 @@ class StepKernel(BackgroundKernel):
     def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        return np.maximum((kappa+1) * mu, 0)
+        return np.maximum(kappa + mu, 0)
 
     def __call__(self, t, *args, **kwargs):
         """
@@ -147,10 +154,27 @@ class MultiplicativeStepKernel(StepKernel):
     Piecewise-constant rate.
     This is presumably for background rate modelling.
     """
+    def kappa_bounds(self):
+        return [(-1, None)] * self.n_bases
+
     def f_kappa(self, **kwargs):
         kappa = self.get_param('kappa', **kwargs)
         mu = self.get_param('mu', 0.0, **kwargs)
-        return (1 + np.maximum(kappa, -1)) * mu
+        return (np.maximum(kappa + 1, 0)) * mu
+
+
+class LogStepKernel(StepKernel):
+    """
+    Piecewise-constant rate.
+    This is presumably for background rate modelling.
+    """
+    def kappa_bounds(self):
+        return [(None, None)] * self.n_bases
+
+    def f_kappa(self, **kwargs):
+        kappa = self.get_param('kappa', **kwargs)
+        mu = self.get_param('mu', 0.0, **kwargs)
+        return mu * np.exp(kappa)
 
 
 def as_background_kernel(

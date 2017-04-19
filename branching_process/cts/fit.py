@@ -208,10 +208,19 @@ class ContinuousExact(object):
         self._n_kappa_pack = self.n_phi_bases * self._fit_kappa
         self._n_omega_pack = self.n_mu_bases * self._fit_omega
         self._n_tau_pack = self.n_phi_bases * self._fit_tau
-        self._mu_bounds = [(tol, None)]
-        self._kappa_bounds = [(0, 1)] * self._n_kappa_pack
-        self._omega_bounds = [(0, None)] * self._n_omega_pack
-        self._tau_bounds = [(0, None)] * self._n_tau_pack
+        self._mu_bounds = mu_kernel.mu_bounds()
+        if self._fit_kappa:
+            self._kappa_bounds = phi_kernel.kappa_bounds()
+        else:
+            self._kappa_bounds = []
+        if self._fit_omega:
+            self._omega_bounds = mu_kernel.kappa_bounds()
+        else:
+            self._omega_bounds = []
+        if self._fit_tau:
+            self._tau_bounds = phi_kernel.tau_bounds()
+        else:
+            self._tau_bounds = []
         self._all_bounds = (
             self._mu_bounds +
             self._kappa_bounds +
