@@ -543,7 +543,7 @@ class ContinuousExact(object):
         fit.update(new_fit)
         if refit_mu:
             # one-step mu update is possible for known noise structure
-            # e.g. additive, but not in general. So let's not.
+            # e.g. additive, but not in general. So, brute force.
             res = minimize(
                 self.obj_mu,
                 x0=fit['mu'],
@@ -560,6 +560,7 @@ class ContinuousExact(object):
             mu = res.x
             new_fit['mu'] = mu
             self._debug_print('new_fit', new_fit)
+            fit.update(new_fit)
 
         self.params.update(fit)
         return fit
