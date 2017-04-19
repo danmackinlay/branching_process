@@ -7,7 +7,7 @@
 - simulate arbitrary inconstant background rate by rejection sampling
 - check assignment is not breaking things
 - step influence kernel
-- better omega init
+- why does mu go to zero?
 
 ## Interval censored problem
 

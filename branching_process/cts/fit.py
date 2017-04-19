@@ -311,13 +311,8 @@ class ContinuousExact(object):
 
     def _guess_params(
             self,
-            mu=None,
-            kappa=None,
-            tau=None,
-            omega=None,
-            pi_kappa=0.0,
-            pi_omega=1e-8,
-            **kwargs
+            randomize=True,
+            **guess
             ):
         """
         guess initialization params.
@@ -330,37 +325,35 @@ class ContinuousExact(object):
 
         TODO: mitigate this risk by not even requiring params unnecessarily
         """
-        if mu is None:
-            # We'd like to choose mu=0 as a guess
-            # but this doesn't work for multiplicative background noise
-            # So we choose a  background intensity of the correct order
-            # of magnitude, so that kappa is not negative for the first round.
-            mu = self.mu_kernel.get_param(
-                'mu',
-                self._n_ts/(self._t_end - self._t_start) * 0.9
-            )
-        if kappa is None:
-            kappa = self.phi_kernel.get_param('kappa')
-            if kappa is not None:
-                kappa = np.ones_like(kappa)/kappa.size
-        if omega is None:
-            omega = self.mu_kernel.get_param('kappa')
-            if omega is not None:
-                omega = np.ones_like(omega)/omega.size
-        if tau is None:
-            tau = self.phi_kernel.get_param('tau')
-        guess = dict(
-            mu=mu,
-            pi_omega=pi_omega,
-            pi_kappa=pi_kappa,
-        )
-        if mu is not None:
-            guess['mu'] = mu
-        if omega is not None:
-            guess['omega'] = omega
-        if kappa is not None:
-            guess['kappa'] = kappa
-
+        # We'd like to choose mu=0 as a guess
+        # but this doesn't work for multiplicative background noise
+        # So we choose a  background intensity of the correct order
+        # of magnitude, so that kappa is not negative for the first round.
+        if 'mu' not in guess:
+            guess['mu'] = self._n_ts/(self._t_end - self._t_start) * 0.9
+        if randomize:
+            guess['mu'] *= np.random.uniform(size=1)
+        if self._fit_kappa:
+            if 'kappa' not in guess:
+                kappa = np.ones(self.phi_kernel.n_bases)
+                kappa /= kappa.size
+                if randomize:
+                    kappa *= np.random.uniform(high=2, size=kappa.shape)
+                guess['kappa'] = kappa
+        if self._fit_omega:
+            if 'omega' not in guess:
+                if randomize:
+                    omega = np.random.normal(size=self.mu_kernel.n_bases)
+                else:
+                    omega = np.zeros(self.mu_kernel.n_bases)
+                guess['omega'] = omega
+        if self._fit_tau:
+            if 'tau' not in guess:
+                tau = np.ones_like(self.phi_kernel.n_bases)
+                tau /= tau.size
+                if randomize:
+                    tau *= np.random.normal(size=tau.shape)
+                guess['tau'] = tau
         return guess
 
     def objective(
