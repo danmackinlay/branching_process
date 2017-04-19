@@ -35,7 +35,7 @@ class BackgroundKernel(InfluenceKernel):
         return [(self.eps, None)]
 
     def kappa_bounds(self):
-        return [(0, None)] * self.n_bases
+        return [(None, None)] * self.n_bases
 
 
 class ConstKernel(BackgroundKernel):
