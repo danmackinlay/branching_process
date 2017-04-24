@@ -154,6 +154,10 @@ class StepKernel(ConstKernel):
         kappa = np.maximum(kappa, -mu)
         return np.ones_like(t) * (mu + np.amax(kappa))
 
+    def count(self, t, *args, **kwargs):
+        tau = self.get_param('tau', **kwargs)
+        return np.histogram(t, tau, density=False)
+
 
 class MultiplicativeStepKernel(StepKernel):
     """

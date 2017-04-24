@@ -15,7 +15,8 @@ class InfluenceKernel(object):
             self,
             n_bases=1,
             eps=1e-8,
-            *args, **fixed_kwargs):
+            *args,
+            **fixed_kwargs):
         self._fixed_kwargs = fixed_kwargs
         self._fixed_kwargs.setdefault('kappa', np.ones(n_bases)/n_bases)
         self._fixed_kwargs.setdefault('tau', np.arange(n_bases)+1)

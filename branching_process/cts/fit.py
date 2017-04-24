@@ -113,16 +113,23 @@ class ContinuousExact(object):
     def penalty(
             self,
             kappa=None,
-            tau=None,
             omega=None,
             pi_kappa=0.0,
             pi_omega=0.0,
+            weight_count=None,
             **kwargs
             ):
         if kappa is None:
             kappa = self.phi_kernel.get_param('kappa')
         if omega is None:
             omega = self.mu_kernel.get_param('kappa')
+        if weight_count is None:
+            weight_count = self._weight_count
+
+        if weight_count:
+            weight = np.ones_like(omega)
+        else:
+            weight = self.mu_kernel.count(**kwargs)
 
         # 2 different l_1 penalties
         pen = 0
@@ -132,7 +139,7 @@ class ContinuousExact(object):
             )
         if self._fit_omega:
             pen = pen + np.sum(
-                np.abs(omega) * pi_omega
+                np.abs(omega) * pi_omega * weight
             )
         return pen
 
@@ -189,6 +196,7 @@ class ContinuousExact(object):
             t_end=None,
             param_vector=None,
             tol=None,
+            weight_count=False,
             **kwargs):
 
         self._t_start = t_start
@@ -244,6 +252,7 @@ class ContinuousExact(object):
         self._n_kappa_pack = self.n_phi_bases * self._fit_kappa
         self._n_omega_pack = self.n_mu_bases * self._fit_omega
         self._n_tau_pack = self.n_phi_bases * self._fit_tau
+        self._weight_count = weight_count
         self._mu_bounds = mu_kernel.mu_bounds()
         if self._fit_kappa:
             self._kappa_bounds = phi_kernel.kappa_bounds()
