@@ -1,5 +1,8 @@
-_paper_output/
+_paper_output/*
+!_paper_output/*.tex
 .doit.db
+
+.DS_Store
 
 
 # Byte-compiled / optimized / DLL files
