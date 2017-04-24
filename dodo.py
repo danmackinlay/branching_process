@@ -28,9 +28,8 @@ def _task_html(pth):
         file_dep=[
             'docs/{pth}.ipynb'.format(pth=pth),
             'docs/html.tpl'.format(pth=pth),
-        ]
-        #  + [ str(p) for p in pathlib.Path('docs/ext_media').glob('*')
-        ,
+        ],
+        #    + [ str(p) for p in pathlib.Path('docs/ext_media').glob('*')],
         targets=[
             'docs/{pth}.html'.format(pth=pth),
             # 'docs/refs.bib'.format(pth=pth)
@@ -162,20 +161,20 @@ def _task_zdravko(srcpth, destpth):
     )
 
 
-def task_latex_wsc2017_paper_sparse_hawkes():
-    return _task_latex('wsc2017_paper_sparse_hawkes')
+def task_latex_paper_sparse_hawkes():
+    return _task_latex('paper_sparse_hawkes')
 
 
-def task_pdf_wsc2017_paper_sparse_hawkes():
-    return _task_pdf('wsc2017_paper_sparse_hawkes')
+def task_pdf_paper_sparse_hawkes():
+    return _task_pdf('paper_sparse_hawkes')
 
 
-def task_view_pdf_wsc2017_paper_sparse_hawkes():
-    return _task_view_pdf('wsc2017_paper_sparse_hawkes')
+def task_view_pdf_paper_sparse_hawkes():
+    return _task_view_pdf('paper_sparse_hawkes')
 
 
-def task_html_wsc2017_paper_sparse_hawkes():
-    return _task_html('wsc2017_paper_sparse_hawkes')
+def task_html_paper_sparse_hawkes():
+    return _task_html('paper_sparse_hawkes')
 
 
 def task_html_intro_to_cts_hawkes():
