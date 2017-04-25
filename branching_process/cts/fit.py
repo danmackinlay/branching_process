@@ -126,10 +126,9 @@ class ContinuousExact(object):
         if weight_count is None:
             weight_count = self._weight_count
 
+        weight = np.ones_like(omega)
         if weight_count:
-            weight = np.ones_like(omega)
-        else:
-            weight = self.mu_kernel.count(**kwargs)
+            weight += self.mu_kernel.count(**kwargs)
 
         # 2 different l_1 penalties
         pen = 0
