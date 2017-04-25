@@ -10,7 +10,6 @@ Poisson point process penalised likelihood regression.
 try:
     import autograd
     import autograd.numpy as np
-    from autograd.util import quick_grad_check, check_grads, nd, unary_nd
     # import autograd.scipy as sp
     have_autograd = True
 except ImportError as e:
@@ -269,7 +268,7 @@ class ContinuousExact(object):
 
         self._omega_weight = np.ones(self.n_mu_bases)
 
-        ## Nb this will break if we ever fit the background rate tau
+        # NB this will break if we ever fit the background rate tau
         if weight_count:
             self._omega_weight += np.array(self.mu_kernel.count(
                 self._eval_ts,
