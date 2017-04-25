@@ -116,20 +116,12 @@ class ContinuousExact(object):
             omega=None,
             pi_kappa=0.0,
             pi_omega=0.0,
-            weight_count=None,
             **kwargs
             ):
         if kappa is None:
             kappa = self.phi_kernel.get_param('kappa')
         if omega is None:
             omega = self.mu_kernel.get_param('kappa')
-        if weight_count is None:
-            weight_count = self._weight_count
-
-        if weight_count:
-            weight = np.ones_like(omega)
-        else:
-            weight = self.mu_kernel.count(**kwargs)
 
         # 2 different l_1 penalties
         pen = 0
@@ -139,7 +131,7 @@ class ContinuousExact(object):
             )
         if self._fit_omega:
             pen = pen + np.sum(
-                np.abs(omega) * pi_omega * weight
+                np.abs(omega) * pi_omega * self._omega_weight
             )
         return pen
 
@@ -272,6 +264,17 @@ class ContinuousExact(object):
             self._omega_bounds +
             self._tau_bounds
         )
+        if weight_count is None:
+            weight_count = self._weight_count
+
+        self._omega_weight = np.ones(self.n_mu_bases)
+
+        ## Nb this will break if we ever fit the background rate tau
+        if weight_count:
+            self._omega_weight += np.array(self.mu_kernel.count(
+                self._eval_ts,
+                **kwargs
+            ), dtype='float')
 
     def _teardown_graphs(self):
 
@@ -292,6 +295,7 @@ class ContinuousExact(object):
             t_end=None,
             tol=None,
             coordwise=False,
+            weight_count=False,
             **kwargs
             ):
         self._setup_graphs(
