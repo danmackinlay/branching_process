@@ -9,6 +9,7 @@
 - check assignment is not breaking things
 - step influence kernel
 - why does mu go to zero?
+- bin selection problem
 
 ## Interval censored problem
 
