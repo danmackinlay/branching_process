@@ -445,12 +445,11 @@ necessary ones, as in Lasso selection.
     There is no closed-form solution for the optimum of the Hawkes model
 likelihood, penalised or not. The derivatives of the unpenalised
 likelihood are easy to calculate manually -\/-\/-
-\cite{ozaki_maximum_1979}. Here, however, we use automatic
-differentiation to make more complex penalisation procedure convenient
-to differentiate \cite{baydin_automatic_2014}. The optimisation proceeds
-using a standard black-box based Truncated Newton algorithm; as more
-specialised sparse regression algorithms such as Least-Angle Regression,
-do not directly apply here.
+\cite{ozaki_maximum_1979}. Here, however, we use standard reverse-mode
+automatic differentiation \cite{baydin_automatic_2014}. The optimisation
+proceeds using a standard gradient-based black-box based Truncated
+Newton algorithm; as more specialised sparse regression algorithms such
+as Least-Angle Regression, do not directly apply here.
 
     \section{Hyperparameter selection}\label{hyperparameter-selection}
 
@@ -470,7 +469,7 @@ The AIC formula, for a given log-likelihood parameter estimate
 
 \[\mathrm{AIC}(N,\hat{\theta}(N))=2d-2L(N,\hat{\theta}(N))\]
 
-The degrees of freedom for parametric models is taken to be the number
+The degrees of freedom for a parametric model is taken to be the number
 of free parameters, equal to the cardinality of the parameter vector
 \(\theta\).
 
@@ -485,7 +484,7 @@ generalise readily to non-smooth penalties.
 We proceed heuristically, based on the degrees-of-freedom arguments from
 Lasso-type linear-model regularisation. There, the number of non-zero
 coefficients fit under a particular value of the regularization penalty
-\(\pi\) in an \(\ell_1\) regression model provides an unbiassed estimate
+\(\pi\) in an \(\ell_1\) regression model provides an unbiased estimate
 of the effective degrees of freedom of the model
 \cite{zou_degrees_2007}.
 
@@ -493,7 +492,7 @@ of the effective degrees of freedom of the model
 non-zero parameters for given regularization coefficients:
 
 \[
-\hat{d}\left(N,\hat{\theta},\pi\right)=\sum_j\mathbb 1\left\{\hat{\theta_j}(N,p,q)\neq 0\right\}
+\hat{d}\left(N,\hat{\theta},p,q\right)=\sum_j\mathbb 1\left\{\hat{\theta_j}(N,p,q)\neq 0\right\}
 \]
 
     The suggested combined procedure is to combine, in an inner loop, the
@@ -501,6 +500,8 @@ fitting of model parameters for given values of \(p\) and \(q\), and
 selecting the hyperparameters with the best overall AIC value.
 
     \subsection{Simulations}\label{simulations}
+
+    TODO: switch to consistent step-function display of instantaneous rate.
 
     We simulate data with parameters to match the stylized behaviour of the
 social media time series of previous work
@@ -510,17 +511,17 @@ test the efficacy of the proposed method.
 
 
     \begin{center}
-    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_22_0.pdf}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_23_0.pdf}
     \end{center}
     { \hspace*{\fill} \\}
     
     \begin{center}
-    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_22_1.pdf}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_23_1.pdf}
     \end{center}
     { \hspace*{\fill} \\}
     
     \begin{center}
-    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_22_2.pdf}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_23_2.pdf}
     \end{center}
     { \hspace*{\fill} \\}
     
@@ -530,43 +531,107 @@ Gaussian process regression of the combined objective function
 \cite{snoek_practical_2012} using the software package
 \href{https://github.com/scikit-optimize/scikit-optimize}{scikit-optimize}.
 
+
+\texttt{\color{outcolor}Out[{\color{outcolor}27}]:}
+    
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_25_0.png}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+
+    With a single regularisation parameter, only for the background rate
+coefficient \(\omega_j\), we recover the background rate efficiently.
+
+
+\texttt{\color{outcolor}Out[{\color{outcolor}28}]:}
+    
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{paper_sparse_hawkes_files/paper_sparse_hawkes_27_0.png}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+
+    \subsection{How to simulate a Hawkes
+process}\label{how-to-simulate-a-hawkes-process}
+
+Here we follow a standard "thinning" method of simulating Hawkes
+processes, given as Algorithm 7.5.IV of Daley and Vere-Jones'
+\emph{Introduction to the Theory of Point Processes Volume 1}
+\cite{daley_introduction_2003}, restating Ogata's original Algorithm 2
+(\cite{ogata_lewis_1981}.
+
+Since that is a general case, here we present a specific version for
+linear Hawkes processes which is considerably simpler.
+
+For clarity, we will use the representation of the Hawkes process as an
+immigrant-birth process, where the recursive "self-excited" component
+corresponds to the "births". We will assume that we are given a list of
+arrival times of immigrants, \(\{a_1,a_2,\dots,a_N\}\), and wish to
+simulate the births arising from these immigrants. We will associate a
+point and its arrival time and discuss them interchangeably where
+ambiguity does not arise.
+
+Each of these \(a_i\) gives rise to a family of descendants
+\(\mathrm{descendants}(a_i)\), distributed independently of all other
+families, whose combined superposition is the final Hawkes process
+(\cite{hawkes_cluster_1974}. It will suffice to simulate the arrival
+times of each of these families. Without loss of generality we may
+consider the problem of simulating the births in a single family started
+at time \(a_1=0\) and translate it.
+
+Now the families
+\(\mathrm{descendants}(t_j)\forall t_j\in \mathrm{children}(a_i)\) are
+all once again identically and mutually independently distributed.
+Proceeding by induction, it suffices to simulate the children of a
+single point at time \(0\). The same method will suffice for its
+children, children of children and so on. The final realisation can be
+constructed from these simualtions by appropriate concatenation and
+translation of the generations of each family.
+
+The single kernel simulation is simple, since the Poisson intensity
+process is no longer conditional on the history of the sequence. As
+before, the influence kernel is \(\phi\). We will assume that \(\phi\)
+is a.e. continuous \(L_1\) integrable and eventually decreasing in
+\(t\). We associate with \(\phi\) a "majorant", \(\phi^{**}\) such that
+\[\phi^{**}(t)\geq\phi(t), \forall t>0\] and \(\phi^{**}\) is
+non-increasing and integrable. With the unimodal influence kernels used
+in the current paper, such majorants are trivial to construct.
+
+We will use the fact that there is some time \(T>0\) such that we do not
+consider events after it, i.e. that we only care about arrival times on
+\([0,T]\), and so only children that occur before time \(T\) can be
+relevent.
+
+\subsubsection{Algorithm: Ogata's thinning
+algorithm}\label{algorithm-ogatas-thinning-algorithm}
+
+Our goal is to simulate the set \(S=\mathrm{children}(a_0)\).
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Set \(i=1, t=0\), \(S=\varnothing\)
+\item
+  Generate \(\Delta\sim \operatorname{Exp}(1/\phi^{**}(t))\)
+\item
+  Set \(t\leftarrow t+\Delta\)
+\item
+  If \(t\geq T\), halt.
+\item
+  With probability \(P=\frac{\phi(t)}{\phi^{**}(t)}\), set
+  \(S\leftarrow S\cup \{t\}\).
+\item
+  Continue from step 2.
+\end{enumerate}
+
     \subsection{Conclusions}\label{conclusions}
 
     
 
     \subsection{Appendix and nonsense}\label{appendix-and-nonsense}
 
-
-
-    \begin{Verbatim}[commandchars=\\\{\}]
-
-        ---------------------------------------------------------------------------
-
-        FileNotFoundError                         Traceback (most recent call last)
-
-        <ipython-input-8-765ef5deb338> in <module>()
-          1 from skopt import load
-          2 
-    ----> 3 res\_gp = load(join(FIT\_DIR, 'additive\_cvge.gp.bz2'))
-    
-
-        /usr/local/lib/python3.6/site-packages/skopt/utils.py in load(filename, **kwargs)
-        122         Reconstructed OptimizeResult instance.
-        123     """
-    --> 124     return load\_(filename, **kwargs)
-    
-
-        /usr/local/lib/python3.6/site-packages/sklearn/externals/joblib/numpy\_pickle.py in load(filename, mmap\_mode)
-        565             obj = \_unpickle(fobj)
-        566     else:
-    --> 567         with open(filename, 'rb') as f:
-        568             with \_read\_fileobject(f, filename, mmap\_mode) as fobj:
-        569                 if isinstance(fobj, \_basestring):
-
-
-        FileNotFoundError: [Errno 2] No such file or directory: '/Users/dan/Datasets/branching\_process\_output/additive\_cvge.gp.bz2'
-
-    \end{Verbatim}
 
     Given two ML fitted models, \((M_1,\hat{\theta}^M_1)\) and
 \((M_2\,\hat{\theta}^M_2)\), the difference in their AIC values is an

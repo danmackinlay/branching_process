@@ -173,6 +173,10 @@ def task_view_pdf_paper_sparse_hawkes():
     return _task_view_pdf('paper_sparse_hawkes')
 
 
+def task_zdravko_paper_sparse_hawkes():
+    return _task_zdravko('paper_sparse_hawkes', 'sparse_hawkes')
+
+
 def task_html_paper_sparse_hawkes():
     return _task_html('paper_sparse_hawkes')
 
