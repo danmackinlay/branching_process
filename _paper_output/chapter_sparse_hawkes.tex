@@ -462,7 +462,7 @@ as \[\mu(t) = \mu_0 + \sum_{j=1}^M  \omega_j \psi_j(t).\]
 be mostly 0.
 
 In practice, we choose
-\[\psi_j(t) := \mathbb{I}_{[\tau_{j},\tau_{j+1})}(t)\] for some lattice
+\[\psi_j(t) := \bb{I}_{[\tau_{j},\tau_{j+1})}(t)\] for some lattice
 \(\{\tau_j\},\) which will correspond to the assumption that "sparse"
 triggers will have localised support in time; we are looking for short
 "spikes".
@@ -570,7 +570,7 @@ optimum is typically shallow \cite{veen_estimation_2008}.
 so that
 
 \[\begin{aligned}
-  { \scriptstyle \frac{\partial}{\partial\kappa_i} } L_\pi(N; \theta)&=-\int_0^T \sum_{t_i\lt t}\phi_i(t-t_i) dt + \sum_{0\leq t_i\leq T} \frac{\sum_{t_k\lt t_i}\phi_j(t_i-t_k)}{\lambda_\theta(t_i)} -\frac{\partial}{\partial\kappa_j}\pi(\theta)
+  { \scriptstyle \frac{\partial}{\partial\kappa_i} } L_\pi(N; \theta)&=-\int_0^T \sum_{t_i\lt t}\phi_i(t-t_i) \dd t + \sum_{0\leq t_i\leq T} \frac{\sum_{t_k\lt t_i}\phi_j(t_i-t_k)}{\lambda_\theta(t_i)} -\frac{\partial}{\partial\kappa_j}\pi(\theta)
 \end{aligned}\]
 
     Finally, I handle the \(\omega_j\) values.
@@ -579,10 +579,10 @@ Taking \(\theta=\omega_j\), and defining
 \(\Delta\tau_j:= {\tau_{j-1}}-{\tau_j}\) we find
 
 \[\begin{aligned}
-{ \scriptstyle \frac{\partial}{\partial\omega_j} }\pi\|\boldsymbol \omega_\theta(t)\|_1 &= { \scriptstyle \frac{\partial}{\partial\omega_j} }\pi \int_{\tau_{j-1}}^{\tau_j} \left|\omega_j\right|dt\\
-&=\pi\Delta\tau_j\operatorname{sgn} \omega_j\\
-{ \scriptstyle \frac{\partial}{\partial\omega_j} }\lambda_\theta(t|\mathcal{F}_t) &=  \Delta\tau_j\mathbb{I}_{[\tau_{j-1},\tau_j)}(t)\\
-{ \scriptstyle \frac{\partial}{\partial\omega_j} } L_\pi(\mathbf t;\theta) &=-\Delta\tau_j-\pi\Delta\tau_j\operatorname{sgn} \omega_j + \sum_{\tau_{j-1}\leq t_i\leq \tau_j} \frac{1}{\lambda_\theta(t_i)}
+{ \scriptstyle \frac{\partial}{\partial\omega_j} }\pi\|\v \omega_\theta(t)\|_1 &= { \scriptstyle \frac{\partial}{\partial\omega_j} }\pi \int_{\tau_{j-1}}^{\tau_j} \left|\omega_j\right|\dd t\\
+&=\pi\Delta\tau_j\oo{sgn} \omega_j\\
+{ \scriptstyle \frac{\partial}{\partial\omega_j} }\lambda_\theta(t|\mathcal{F}_t) &=  \Delta\tau_j\bb{I}_{[\tau_{j-1},\tau_j)}(t)\\
+{ \scriptstyle \frac{\partial}{\partial\omega_j} } L_\pi(\v t;\theta) &=-\Delta\tau_j-\pi\Delta\tau_j\oo{sgn} \omega_j + \sum_{\tau_{j-1}\leq t_i\leq \tau_j} \frac{1}{\lambda_\theta(t_i)}
 \end{aligned}\]
 
 Higher partial derivatives are also analogous to the partial derivatives
@@ -804,12 +804,12 @@ practical applications \cite{sugiura_further_1978}.
 penalizes only the non-parametric extensions to the model, such that
 they vanish as the penalty term increases. \cite{green_penalized_1987}
 
-\[\lim_{\pi\to\infty}\hat{\theta}_\pi'(\mathbf t) =\hat{\theta}(\mathbf t)\]
+\[\lim_{\pi\to\infty}\hat{\theta}_\pi'(\v t) =\hat{\theta}(\v t)\]
 
 I follow this practice here, penalizing only the deviations of
 \(\omega(t)\) from the parametric estimate.
 
-\[L_\pi(\mathbf t;\mu,\phi):=-\int_0^T\lambda(t;\mu,\phi)dt + \int_0^T\log \lambda(t;\mu,\phi) dN_t - \pi\|\boldsymbol \omega_\theta(t)\|_1\]
+\[L_\pi(\v t;\mu,\phi):=-\int_0^T\lambda(t;\mu,\phi) \dd t + \int_0^T\log \lambda(t;\mu,\phi) \dd N_t - \pi\|\v \omega_\theta(t)\|_1\]
 
     The waiting times are exponentially distributed given the intensity,
 i.e. their densities \(f_i(s)\) are given \[\begin{aligned}
@@ -819,7 +819,7 @@ f_i(t)&\equiv f(t_{i+1}-t_i|\mathcal{F}(N(t_i)))\\
 
     We also, when notationally convenient, use the equivalent representation
 as the left-continuous function that increments at each arrival time: \[
-N(t)-N(s):= \left|\{s:s\in \mathbf{t}\,\mathrm{and}\,s\leq t\}\right| \,\mathrm{ for }\, t\geq s
+N(t)-N(s):= \left|\{s:s\in \v{t}\,\text{ and }\,s\leq t\}\right| \,\mathrm{ for }\, t\geq s
 \]
 
     \[N(t)\sim \operatorname{Pois}(\Lambda(t|\mathcal{F}(N(t)))\] where
