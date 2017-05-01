@@ -432,7 +432,7 @@ explicity dependence on history and parameters..
 
     The log-likelihood function for a given realisation of the data is can
 be found from the usual likelihood for Poisson data of a given intensity
-\cite{ozaki_etimating_1979}
+\cite{ozaki_estimating_1979}
 
 \[\begin{aligned}L(N;\mu,\phi) &=-\int_0^T\lambda^*(t) \dd t + \int_0^T\log \lambda^*(t) \dd N_t \\
 &=-\int_0^T\lambda^*(t)\dd t + \int_0^T\log \lambda^*(t) \dd N_t \\
@@ -442,7 +442,7 @@ be found from the usual likelihood for Poisson data of a given intensity
 Using the method of maximum likelihood we estimate our parameter vector
 \(\theta:=(\mu, \phi)\) by choosing the estimates to maximise the
 log-likelihood,
-\[\hat{\theta}_\pi(N) = \o{argmax}_{\mu,\phi} L_\pi(N;\theta).\]
+\[\hat{\theta}_\pi(N) = \oo{argmax}_{\mu,\phi} L_\pi(N;\theta).\]
 
     Here we extend the likelihood approach with a penalty functional
 \(\pi\):
@@ -610,7 +610,7 @@ validation, cross validation is not straightforward for time series.
 
 The traditional means of performing model selection in Hawkes-type
 models e.g. \cite{ogata_estimation_1983}, uses \emph{degrees-of-freedom}
-penalties \cite{efron_how_1886}. Specifically, Akaike's
+penalties \cite{efron_how_1986}. Specifically, Akaike's
 \cite{akaike_likelihood_1981} Information Criterion, or \emph{AIC}, is
 widely popular.
 
