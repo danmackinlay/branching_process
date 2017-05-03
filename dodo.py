@@ -161,20 +161,24 @@ def _task_zdravko(srcpth, destpth):
     )
 
 
-def task_latex_paper_sparse_hawkes():
-    return _task_latex('paper_sparse_hawkes')
+def task_latex_chapter_sparse_hawkes():
+    return _task_latex('chapter_sparse_hawkes')
 
 
-def task_pdf_paper_sparse_hawkes():
-    return _task_pdf('paper_sparse_hawkes')
+def task_pdf_chapter_sparse_hawkes():
+    return _task_pdf('chapter_sparse_hawkes')
 
 
-def task_view_pdf_paper_sparse_hawkes():
-    return _task_view_pdf('paper_sparse_hawkes')
+def task_view_pdf_chapter_sparse_hawkes():
+    return _task_view_pdf('chapter_sparse_hawkes')
 
 
-def task_html_paper_sparse_hawkes():
-    return _task_html('paper_sparse_hawkes')
+def task_zdravko_chapter_sparse_hawkes():
+    return _task_zdravko('chapter_sparse_hawkes', 'sparse_hawkes')
+
+
+def task_html_chapter_sparse_hawkes():
+    return _task_html('chapter_sparse_hawkes')
 
 
 def task_html_intro_to_cts_hawkes():

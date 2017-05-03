@@ -1,0 +1,838 @@
+
+% Default to the notebook output style
+
+    
+
+
+% Inherit from the specified cell style.
+
+
+
+
+    
+
+\documentclass[11pt]{article}
+
+
+    
+    
+
+    \usepackage[T1]{fontenc}
+    % Nicer default font (+ math font) than Computer Modern for most use cases
+    \usepackage{mathpazo}
+
+    % Basic figure setup, for now with no caption control since it's done
+    % automatically by Pandoc (which extracts ![](path) syntax from Markdown).
+    \usepackage{graphicx}
+    % We will generate all images so they have a width \maxwidth. This means
+    % that they will get their normal width if they fit onto the page, but
+    % are scaled down if they would overflow the margins.
+    \makeatletter
+    \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth
+    \else\Gin@nat@width\fi}
+    \makeatother
+    \let\Oldincludegraphics\includegraphics
+    % Set max figure width to be 80% of text width, for now hardcoded.
+    \renewcommand{\includegraphics}[1]{\Oldincludegraphics[width=.8\maxwidth]{#1}}
+    % Ensure that by default, figures have no caption (until we provide a
+    % proper Figure object with a Caption API and a way to capture that
+    % in the conversion process - todo).
+    \usepackage{caption}
+    \DeclareCaptionLabelFormat{nolabel}{}
+    \captionsetup{labelformat=nolabel}
+
+    \usepackage{adjustbox} % Used to constrain images to a maximum size 
+    \usepackage{xcolor} % Allow colors to be defined
+    \usepackage{enumerate} % Needed for markdown enumerations to work
+    \usepackage{geometry} % Used to adjust the document margins
+    \usepackage{amsmath} % Equations
+    \usepackage{amssymb} % Equations
+    \usepackage{textcomp} % defines textquotesingle
+    % Hack from http://tex.stackexchange.com/a/47451/13684:
+    \AtBeginDocument{%
+        \def\PYZsq{\textquotesingle}% Upright quotes in Pygmentized code
+    }
+    \usepackage{upquote} % Upright quotes for verbatim code
+    \usepackage{eurosym} % defines \euro
+    \usepackage[mathletters]{ucs} % Extended unicode (utf-8) support
+    \usepackage[utf8x]{inputenc} % Allow utf-8 characters in the tex document
+    \usepackage{fancyvrb} % verbatim replacement that allows latex
+    \usepackage{grffile} % extends the file name processing of package graphics 
+                         % to support a larger range 
+    % The hyperref package gives us a pdf with properly built
+    % internal navigation ('pdf bookmarks' for the table of contents,
+    % internal cross-reference links, web links for URLs, etc.)
+    \usepackage{hyperref}
+    \usepackage{longtable} % longtable support required by pandoc >1.10
+    \usepackage{booktabs}  % table support for pandoc > 1.12.2
+    \usepackage[inline]{enumitem} % IRkernel/repr support (it uses the enumerate* environment)
+    \usepackage[normalem]{ulem} % ulem is needed to support strikethroughs (\sout)
+                                % normalem makes italics be italics, not underlines
+    
+\usepackage{apacite}
+
+
+    
+
+    
+    % Colors for the hyperref package
+    \definecolor{urlcolor}{rgb}{0,.145,.698}
+    \definecolor{linkcolor}{rgb}{.71,0.21,0.01}
+    \definecolor{citecolor}{rgb}{.12,.54,.11}
+
+    % ANSI colors
+    \definecolor{ansi-black}{HTML}{3E424D}
+    \definecolor{ansi-black-intense}{HTML}{282C36}
+    \definecolor{ansi-red}{HTML}{E75C58}
+    \definecolor{ansi-red-intense}{HTML}{B22B31}
+    \definecolor{ansi-green}{HTML}{00A250}
+    \definecolor{ansi-green-intense}{HTML}{007427}
+    \definecolor{ansi-yellow}{HTML}{DDB62B}
+    \definecolor{ansi-yellow-intense}{HTML}{B27D12}
+    \definecolor{ansi-blue}{HTML}{208FFB}
+    \definecolor{ansi-blue-intense}{HTML}{0065CA}
+    \definecolor{ansi-magenta}{HTML}{D160C4}
+    \definecolor{ansi-magenta-intense}{HTML}{A03196}
+    \definecolor{ansi-cyan}{HTML}{60C6C8}
+    \definecolor{ansi-cyan-intense}{HTML}{258F8F}
+    \definecolor{ansi-white}{HTML}{C5C1B4}
+    \definecolor{ansi-white-intense}{HTML}{A1A6B2}
+
+    % commands and environments needed by pandoc snippets
+    % extracted from the output of `pandoc -s`
+    \providecommand{\tightlist}{%
+      \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+    \DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+    % Add ',fontsize=\small' for more characters per line
+    \newenvironment{Shaded}{}{}
+    \newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{{#1}}}}
+    \newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{{#1}}}
+    \newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{{#1}}}
+    \newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{{#1}}}
+    \newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{{#1}}}
+    \newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{{#1}}}
+    \newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{{#1}}}
+    \newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{{#1}}}}
+    \newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{{#1}}}
+    \newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{{#1}}}}
+    \newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{{#1}}}
+    \newcommand{\RegionMarkerTok}[1]{{#1}}
+    \newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{{#1}}}}
+    \newcommand{\NormalTok}[1]{{#1}}
+    
+    % Additional commands for more recent versions of Pandoc
+    \newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{{#1}}}
+    \newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{{#1}}}
+    \newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{{#1}}}
+    \newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{{#1}}}
+    \newcommand{\ImportTok}[1]{{#1}}
+    \newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{{#1}}}}
+    \newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{{#1}}}}}
+    \newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{{#1}}}}}
+    \newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{{#1}}}
+    \newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{{#1}}}}
+    \newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{{#1}}}
+    \newcommand{\BuiltInTok}[1]{{#1}}
+    \newcommand{\ExtensionTok}[1]{{#1}}
+    \newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{{#1}}}
+    \newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{{#1}}}
+    \newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{{#1}}}}}
+    \newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{{#1}}}}}
+    
+    
+    % Define a nice break command that doesn't care if a line doesn't already
+    % exist.
+    \def\br{\hspace*{\fill} \\* }
+    % Math Jax compatability definitions
+    \def\gt{>}
+    \def\lt{<}
+    % Document parameters
+    
+\title{Regularised parameter selection in the non-stationary Hawkes process}
+
+    
+
+
+
+    
+
+\author{Daniel MacKinlay}
+
+    
+
+    % Pygments definitions
+    
+\makeatletter
+\def\PY@reset{\let\PY@it=\relax \let\PY@bf=\relax%
+    \let\PY@ul=\relax \let\PY@tc=\relax%
+    \let\PY@bc=\relax \let\PY@ff=\relax}
+\def\PY@tok#1{\csname PY@tok@#1\endcsname}
+\def\PY@toks#1+{\ifx\relax#1\empty\else%
+    \PY@tok{#1}\expandafter\PY@toks\fi}
+\def\PY@do#1{\PY@bc{\PY@tc{\PY@ul{%
+    \PY@it{\PY@bf{\PY@ff{#1}}}}}}}
+\def\PY#1#2{\PY@reset\PY@toks#1+\relax+\PY@do{#2}}
+
+\expandafter\def\csname PY@tok@w\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.73,0.73}{##1}}}
+\expandafter\def\csname PY@tok@c\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@cp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.74,0.48,0.00}{##1}}}
+\expandafter\def\csname PY@tok@k\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@kp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@kt\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.69,0.00,0.25}{##1}}}
+\expandafter\def\csname PY@tok@o\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@ow\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.67,0.13,1.00}{##1}}}
+\expandafter\def\csname PY@tok@nb\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@nf\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
+\expandafter\def\csname PY@tok@nc\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
+\expandafter\def\csname PY@tok@nn\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
+\expandafter\def\csname PY@tok@ne\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.82,0.25,0.23}{##1}}}
+\expandafter\def\csname PY@tok@nv\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@no\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.53,0.00,0.00}{##1}}}
+\expandafter\def\csname PY@tok@nl\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.63,0.63,0.00}{##1}}}
+\expandafter\def\csname PY@tok@ni\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.60,0.60,0.60}{##1}}}
+\expandafter\def\csname PY@tok@na\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.49,0.56,0.16}{##1}}}
+\expandafter\def\csname PY@tok@nt\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@nd\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.67,0.13,1.00}{##1}}}
+\expandafter\def\csname PY@tok@s\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@sd\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@si\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.53}{##1}}}
+\expandafter\def\csname PY@tok@se\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.13}{##1}}}
+\expandafter\def\csname PY@tok@sr\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.53}{##1}}}
+\expandafter\def\csname PY@tok@ss\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@sx\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@m\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@gh\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,0.50}{##1}}}
+\expandafter\def\csname PY@tok@gu\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.50,0.00,0.50}{##1}}}
+\expandafter\def\csname PY@tok@gd\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.63,0.00,0.00}{##1}}}
+\expandafter\def\csname PY@tok@gi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.63,0.00}{##1}}}
+\expandafter\def\csname PY@tok@gr\endcsname{\def\PY@tc##1{\textcolor[rgb]{1.00,0.00,0.00}{##1}}}
+\expandafter\def\csname PY@tok@ge\endcsname{\let\PY@it=\textit}
+\expandafter\def\csname PY@tok@gs\endcsname{\let\PY@bf=\textbf}
+\expandafter\def\csname PY@tok@gp\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,0.50}{##1}}}
+\expandafter\def\csname PY@tok@go\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.53,0.53,0.53}{##1}}}
+\expandafter\def\csname PY@tok@gt\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.27,0.87}{##1}}}
+\expandafter\def\csname PY@tok@err\endcsname{\def\PY@bc##1{\setlength{\fboxsep}{0pt}\fcolorbox[rgb]{1.00,0.00,0.00}{1,1,1}{\strut ##1}}}
+\expandafter\def\csname PY@tok@kc\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@kd\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@kn\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@kr\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@bp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@fm\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
+\expandafter\def\csname PY@tok@vc\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@vg\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@vi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@vm\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@sa\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@sb\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@sc\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@dl\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@s2\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@sh\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@s1\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@mb\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@mf\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@mh\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@mi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@il\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@mo\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@ch\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@cm\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@cpf\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@c1\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@cs\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+
+\def\PYZbs{\char`\\}
+\def\PYZus{\char`\_}
+\def\PYZob{\char`\{}
+\def\PYZcb{\char`\}}
+\def\PYZca{\char`\^}
+\def\PYZam{\char`\&}
+\def\PYZlt{\char`\<}
+\def\PYZgt{\char`\>}
+\def\PYZsh{\char`\#}
+\def\PYZpc{\char`\%}
+\def\PYZdl{\char`\$}
+\def\PYZhy{\char`\-}
+\def\PYZsq{\char`\'}
+\def\PYZdq{\char`\"}
+\def\PYZti{\char`\~}
+% for compatibility with earlier versions
+\def\PYZat{@}
+\def\PYZlb{[}
+\def\PYZrb{]}
+\makeatother
+
+
+    % Exact colors from NB
+    \definecolor{incolor}{rgb}{0.0, 0.0, 0.5}
+    \definecolor{outcolor}{rgb}{0.545, 0.0, 0.0}
+
+
+
+\newcommand{\var}{\operatorname{Var}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\bb}[1]{\mathbb{#1}}
+\renewcommand{\bf}[1]{\mathbf{#1}}
+\renewcommand{\v}[1]{\boldsymbol{#1}}
+\newcommand{\m}[1]{\mathrm{#1}}
+\newcommand{\cc}[1]{\mathcal{#1}}
+\renewcommand{\cc}[1]{\mathcal{#1}}
+\newcommand{\oo}[1]{\operatorname{#1}}
+
+
+
+    
+
+    % Prevent overflowing lines due to hard-to-break entities
+    \sloppy 
+    % Setup hyperref package
+    \hypersetup{
+      breaklinks=true,  % so long urls are correctly broken across lines
+      colorlinks=true,
+      urlcolor=urlcolor,
+      linkcolor=linkcolor,
+      citecolor=citecolor,
+      }
+    % Slightly bigger margins than the latex defaults
+    
+    \geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+    
+    
+
+
+    \begin{document}
+    
+    
+    \maketitle
+    
+    
+
+    
+    \section{\texorpdfstring{\(\ell_1\)-penalised non-stationary Hawkes
+branching
+process}{\textbackslash{}ell\_1-penalised non-stationary Hawkes branching process}}\label{ell_1-penalised-non-stationary-hawkes-branching-process}
+
+
+
+
+
+    \[
+\renewcommand{\var}{\operatorname{Var}}
+\renewcommand{\dd}{\mathrm{d}}
+\renewcommand{\bb}[1]{\mathbb{#1}}
+\renewcommand{\bf}[1]{\mathbf{#1}}
+\renewcommand{\v}[1]{\boldsymbol{#1}}
+\renewcommand{\m}[1]{\mathrm{#1}}
+\renewcommand{\cc}[1]{\mathcal{#1}}
+\renewcommand{\cc}[1]{\mathcal{#1}}
+\renewcommand{\oo}[1]{\operatorname{#1}}
+\]
+
+    \subsection{Abstract}\label{abstract}
+
+We are interested in the problem of simultaneous identification of the
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  self excitation kernel, and
+\item
+  (possibly inhomogenous) background rate
+\end{enumerate}
+
+of a Hawkes point process a using of \(\ell_1\) penalised regression.
+
+This is analagous to a blind deconvolution problem
+\cite{stockham_blind_1975}, adaptive robust regression
+\cite{donoho_automatic_1988}, or a sparse inverse problem
+\cite{tibshirani_regression_1996}, but considerably more challenging;
+While the process model superficially resembles an i.i.d. linear
+process, the different noise model and sequential dependence mean that
+there are few of the same convenient results; We cannot easily, for
+example, choose our our penalty parameters by standard cross validation.
+The proposed method uses a heuristically-motivated degrees-of-freedom
+regularisation parameter selection, which we test through simulation.
+The proposed method works well in practice.
+
+    \subsection{Introduction}\label{introduction}
+
+\subsubsection{Notation}\label{notation}
+
+We are given a process \(N:\cc{B}(\bb{R})\mapsto \bb{N}^0\), which
+counts the number of arrivals in a given time. Since we are usually
+concerned with arrivals over increasing time intervals, we will usually
+consider \(N\) to be indexed by time:
+\(N(t):=N([0,t))-N((-\infty, t))\).
+
+We represent a realisation of the time series by a (finite by
+assumption) sequence of arrival times
+\(\v{t}=\{\dots,t_1, t_2,\dots,t_N(T)\}.\) We will be concerned with
+estimating its likelihood based on the likelihood of the series on an
+interval an interval \([0,T]\). We define \(\v{t}':=\v{t}\cap [0,T]\)
+and assume \(\left|\v{t}'\right|<\infty.\)
+
+We set \(t_1\equiv \inf \v{t}'\); Indices \(i\leq 0\) are reserved for
+point in the "history" of the process before time \(0\), which may be
+generated by any arbitrary process. We will not be concerned with
+evaluating the likelihood of such histories but may retain them to
+control for their influence on the future of the series. For the rates
+to be well-defined, however, we will assume that the increments of the
+process are a.s. finite on any finite interval.
+
+    We use only the left-continuous filtration
+\(\mathcal{F}(\{N(s)\}_{s < t})\) generated by the paths of the process,
+which we here write as \(\cc{F}(N(t)).\)
+
+We call it a regular point process if it has an associated
+\emph{intensity} process \(\lambda\), such that \(\lambda\) is
+predictable with respect to \(\cc{F}(N)\) generated by the process, i.e.
+\cite{daley_introduction_2003}
+
+\[\lambda(t|\cc{F}(N(t))):=\lim_{h\to 0} \frac{\bb E\left(N([t,t+h))\right)}{h}.\]
+
+Hereafter we define \(\lambda^*(t):=\lambda(t|\cc{F}(N(t)))\) for
+brevity.
+
+Such regular point processes generalise the homogeneous Poisson rate in
+the sense that if we choose \(\lambda^*(t)\equiv \lambda_0,\) then it is
+the intensity of a homogeneous Poisson rate with fixed intensity
+\(\lambda_0\).
+
+    We will use the inter-arrival waiting times \(s_i=t_{i+1}-t_i\) to
+calculate the data likelihood, after Rubin \cite{rubin_regular_1972}.
+
+From the definition of the intensity we find \[\begin{aligned}
+\frac{\dd}{\dd t}\bb P(t_{i+1}=t|\mathcal{F}(N(t)))=
+\end{aligned}\]
+
+TODO: Which bits does Z want proven? Rewrite to start from transition
+probability? Probably makes this shorter. Otherwise prove equivalence of
+intensity and transition prob DE?
+
+    The Hawkes process \cite{hawkes_point_1971} in particular, is the linear
+self-exciting point process; Concretely, given a "background" rate
+\(\mu:\mathbb{R}^+\rightarrow\mathbb{R}^+,\) and a non-negative
+influence kernel with positive support
+\(\phi:\mathbb{R}\rightarrow\mathbb{R}^+\cup\{0\}\), the Hawkes process
+has the following expression for its intensity:
+
+\[
+\begin{aligned}
+\lambda(t|\mathcal{F}(N(t);\mu,\phi) &= \mu(t) + \phi * N\\
+&= \mu(t)  + \int_{-\infty}^{\infty}\phi(t-s)\dd N(s)\\
+&= \mu(t) + \int_{-\infty}^{t}\phi(t-s)\dd N(s)\\
+&= \mu(t) + \sum_{t_i\lt t}\phi(t-t_i)
+\end{aligned}
+\]
+
+For brevity, we write
+\(\lambda(\mathcal{F}(N(t));\mu,\phi)=\lambda^*(t)\), but will suppress
+explicity dependence on history and parameters..
+
+    The log-likelihood function for a given realisation of the data is can
+be found from the usual likelihood for Poisson data of a given intensity
+\cite{ozaki_estimating_1979}
+
+\[\begin{aligned}L(N;\mu,\phi) &=-\int_0^T\lambda^*(t) \dd t + \int_0^T\log \lambda^*(t) \dd N_t \\
+&=-\int_0^T\lambda^*(t)\dd t + \int_0^T\log \lambda^*(t) \dd N_t \\
+&=-\int_0^T\lambda^*(t)\dd t + \sum_{t\in\v{t}'}\log \lambda^*(t)
+\end{aligned}\]
+
+Using the method of maximum likelihood we estimate our parameter vector
+\(\theta:=(\mu, \phi)\) by choosing the estimates to maximise the
+log-likelihood,
+\[\hat{\theta}_\pi(N) = \oo{argmax}_{\mu,\phi} L_\pi(N;\theta).\]
+
+    Here we extend the likelihood approach with a penalty functional
+\(\pi\):
+
+\[L_\pi(N, \mu, \phi):= L(N; \mu, \phi)- \pi(\mu, \phi)\]
+
+As in plain log-likelihood optimization, the estimate is defined as the
+maximizer:
+
+\[\hat{\theta}_\pi(N) = \oo{argmax}_\theta L_\pi(N;\theta)\]
+
+    We take \(\mu\) to be an unknown sparse, non-random signal in a
+particular sense. We will assume that, given a basis
+\(\{\psi_j \}_{1\leq j\leq M}\), that we may write the background rate
+as \[\mu(t) = \mu_0 + \sum_{j=1}^M  \omega_j \psi_j(t).\]
+\emph{Sparsity} here will imply that the coefficients \(\omega_j\) will
+be mostly 0.
+
+In practice, we choose
+\[\psi_j(t) := \bb{I}_{[\tau_{j},\tau_{j+1})}(t)\] for some lattice
+\(\{\tau_j\},\) which will correspond to the assumption that "sparse"
+triggers will have localised support in time; we are looking for short
+"spikes".
+
+Similarly, we will approximate \(\phi\) in a different functional basis
+\(\{\bar{\psi}\}_{1\leq k \leq K}\), such that
+\(\phi(t):= \sum_{k=1}^K \bar{\psi}(t;k)\). This basis choice is likely
+arbitrary, but many exist in the literature trading off computational
+and statistical convenience, including Laguerre polynomials
+\cite{ogata_linear_1982}, exponential functions
+\cite{schoenberg_consistent_2005,rambaldi_modeling_2015}, and step
+functions \cite{eichler_graphical_2016} As a convenient choice, we
+propose a basis of smooth unimodal non-negative functions with a
+computationally convenient form, the Maxwell density,
+\[\bar{\psi}_j(t;\sigma):=\sqrt{\frac{2}{\pi}} \frac{t^2\exp\left(-\frac{t^2}{2\sigma^2}\right)}{\sigma^3}.\]
+so that
+
+\[\phi(t):= \sum_{j=1}^K \kappa_j\bar{\psi}(t;\sigma_j).\] Once again,
+some vector \(\{\sigma_j\}_{j\leq K}\) of time-scale parameters are
+chosen \emph{a priori}.
+
+
+
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{chapter_sparse_hawkes_files/chapter_sparse_hawkes_14_0.pdf}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+    A motivation for these specific choices is a particular real-world
+problem: modelling viral sharing and spreading in social media. We
+suspect that online popularity is governed by some mixture of two
+componenets:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  organic social sharing, modeled by the self-exciting \(\phi\)
+  component, and
+\item
+  intermittent external boosts represented as variations in the the
+  \(\mu\) component, such as when an internet meme is featured on an
+  external medium such as television.
+\end{enumerate}
+
+Models such as the Hawkes process have frequently been applied in an
+attempt to disambiguate these two
+\cite{crane_robust_2008,mitchell_hawkes_2010,rizoiu_expecting_2017}.
+
+    With basis functions fixed, the problem has become one of selection of
+intercepts and basis expansions coefficients, and we may equivalently
+write
+\(\theta=(\mu, \kappa_1,\kappa_2,\dots,\kappa_K,\omega_1, \omega_2,\dots,\omega_M).\)
+
+\(\ell_1\) type penalties are known for their ability to produce sparse
+solutions, so we choose penalties of the form
+\[\pi(\theta)=p\left\|\{\kappa_j\}\right\|_1+q\left\|\{\omega_j\}\right\|_1.\]
+With the right choice of the parameters \(p\) and \(q\) we hope to
+shrink unnecessary parameters to zero, identifying predictively
+necessary ones, as in Lasso selection.
+
+    There is no closed-form solution for the optimum of the Hawkes model
+likelihood, penalised or not. However, we may use the gradient to find
+it efficiently numerically. The optimisation proceeds using a standard
+gradient-based black-box based Truncated Newton algorithm; as more
+specialised sparse regression algorithms such as Least-Angle Regression,
+do not directly apply here.
+
+The gradient is efficient to calculate using standard standard
+reverse-mode automatic differentiation \cite{baydin_automatic_2014} for
+a wide variety of functional decomposition bases and penalties.
+
+The enthusiast may also calculate the derivatives analytically. For
+example, Ozaki \cite{ozaki_maximum_1979} give derivatives for the
+parametric log likelihood estimator.
+
+    Let \(\gamma\) be any of the components of the parameter vector
+\(\theta\). Since the likelihood depends on this vector only through the
+intensity process, we have
+
+\[\begin{aligned}
+{ \scriptstyle \frac{\partial}{\partial\gamma} } L_\pi(N;\theta)&=-\int_0^T{ \scriptstyle \frac{\partial}{\partial\gamma} }\lambda^*(t;\theta)dt + \int_0^T { \scriptstyle \frac{\partial}{\partial\gamma} }\log \lambda^*(t;\theta) \dd N_t -{ \scriptstyle \frac{\partial}{\partial\gamma} }\pi(\theta) \\
+&=-\int_0^T{ \scriptstyle \frac{\partial}{\partial\gamma} }\lambda^*(t;\theta)\dd t + \sum_{0\leq t_i\leq T} \frac{{ \scriptstyle \frac{\partial}{\partial\gamma} }\lambda^*(t_i)}{\lambda^*(t_i)} -{ \scriptstyle \frac{\partial}{\partial\gamma} }\pi(\theta)
+\end{aligned}
+\]
+
+    Taking \(\gamma=\mu\),
+
+\[{ \scriptstyle \frac{\partial}{\partial\mu} }\lambda^*(t;\mu) = 1\]
+
+I use higher derivatives for \(\mu\) so that I may optimize this
+component using a higher order Newton method, since we know that its
+optimum is typically shallow \cite{veen_estimation_2008}.
+
+\[\begin{aligned}
+  { \scriptstyle \frac{\partial}{\partial\mu} } L_\pi(N;\theta) &=-T + \sum_{0\leq t_i\leq T} \frac{1}{\lambda(t_i;\theta)} \\
+  { \scriptstyle \frac{\partial^2}{\partial\mu^2} } L_\pi(N;\theta) &= \sum_{0\leq t_i\leq T} \frac{-1}{\lambda^2(t_i;\theta)}\\
+  { \scriptstyle \frac{\partial^3}{\partial\mu^3} } L_\pi(N;\theta) &= \sum_{0\leq t_i\leq T} \frac{2}{\lambda^3(t_i;\theta)}
+  \end{aligned}\]
+
+    Now I handle \(\gamma=\kappa_j\),
+
+\[{ \scriptstyle \frac{\partial}{\partial\kappa_j} }\lambda^*(t;\theta) =  \sum_{t_i\lt t}\phi_j(t-t_i)\]
+
+so that
+
+\[\begin{aligned}
+  { \scriptstyle \frac{\partial}{\partial\kappa_i} } L_\pi(N; \theta)&=-\int_0^T \sum_{t_i\lt t}\phi_i(t-t_i) \dd t + \sum_{0\leq t_i\leq T} \frac{\sum_{t_k\lt t_i}\phi_j(t_i-t_k)}{\lambda_\theta(t_i)} -\frac{\partial}{\partial\kappa_j}\pi(\theta)
+\end{aligned}\]
+
+    Finally, I handle the \(\omega_j\) values.
+
+Taking \(\theta=\omega_j\), and defining
+\(\Delta\tau_j:= {\tau_{j-1}}-{\tau_j}\) we find
+
+\[\begin{aligned}
+{ \scriptstyle \frac{\partial}{\partial\omega_j} }\pi\|\v \omega_\theta(t)\|_1 &= { \scriptstyle \frac{\partial}{\partial\omega_j} }\pi \int_{\tau_{j-1}}^{\tau_j} \left|\omega_j\right|\dd t\\
+&=\pi\Delta\tau_j\oo{sgn} \omega_j\\
+{ \scriptstyle \frac{\partial}{\partial\omega_j} }\lambda_\theta(t|\mathcal{F}_t) &=  \Delta\tau_j\bb{I}_{[\tau_{j-1},\tau_j)}(t)\\
+{ \scriptstyle \frac{\partial}{\partial\omega_j} } L_\pi(\v t;\theta) &=-\Delta\tau_j-\pi\Delta\tau_j\oo{sgn} \omega_j + \sum_{\tau_{j-1}\leq t_i\leq \tau_j} \frac{1}{\lambda_\theta(t_i)}
+\end{aligned}\]
+
+Higher partial derivatives are also analogous to the partial derivatives
+with respect to \(\mu\), although of course the penalty introduces a
+discontinuity at \(\omega_j=0\). This last formula is the key to the
+gradient ascent algorithm.
+
+Note that the \(\omega_j\) values are mutually orthogonal, in the sense
+that \({ \scriptstyle \frac{\partial^2}{\partial\omega_i\omega_j}} =0\)
+if \(i\ne j\). I can treat these components, more or less, as separate
+univariate components when optimizing, and the Hessian will be sparse
+off the diagonal.
+
+By construction,
+\({ \scriptstyle \frac{\partial}{\partial\mu} }\pi(\gamma) = { \scriptstyle \frac{\partial}{\partial\eta} }\pi(\gamma) = { \scriptstyle \frac{\partial}{\partial\kappa} }\pi(\gamma) = 0\).
+
+TODO: I've changed \(\omega\) penalisation; this needs fixing.
+
+    \section{Hyperparameter selection}\label{hyperparameter-selection}
+
+    \subsubsection{Degrees of freedom}\label{degrees-of-freedom}
+
+Whilst we might wish to select the regularisation penalties by cross
+validation, cross validation is not straightforward for time series.
+
+The traditional means of performing model selection in Hawkes-type
+models e.g. \cite{ogata_estimation_1983}, uses \emph{degrees-of-freedom}
+penalties \cite{efron_how_1986}. Specifically, Akaike's
+\cite{akaike_likelihood_1981} Information Criterion, or \emph{AIC}, is
+widely popular.
+
+The AIC formula, for a given log-likelihood parameter estimate
+\(\hat{\theta}(N)\), with 'degrees of freedom', \(d\) is given
+
+\[\mathrm{AIC}(N,\hat{\theta}(N))=2d-2L(N,\hat{\theta}(N))\]
+
+The degrees of freedom for a parametric model is taken to be the number
+of free parameters, equal to the cardinality of the parameter vector
+\(\theta\).
+
+    The AIC does not immediately solve the problem of regularized parameter
+selection where the regularisation parameter may be a real value
+smoothly interpolating many possible models. One can calculate an AIC
+for penalised models, but this require onerous Hessian matrix inversions
+and becomes costly in high dimensions, and in any case does not
+generalise readily to non-smooth penalties.
+\cite{konishi_information_2008}
+
+We proceed heuristically, based on the degrees-of-freedom arguments from
+Lasso-type linear-model regularisation. There, the number of non-zero
+coefficients fit under a particular value of the regularization penalty
+\(\pi\) in an \(\ell_1\) regression model provides an unbiased estimate
+of the effective degrees of freedom of the model
+\cite{zou_degrees_2007}.
+
+    This suggests, by analogy, an AIC estimate based on the number of
+non-zero parameters for given regularization coefficients:
+
+\[
+\hat{d}\left(N,\hat{\theta},p,q\right)=\sum_j\mathbb 1\left\{\hat{\theta_j}(N,p,q)\neq 0\right\}
+\]
+
+    The suggested combined procedure is to combine, in an inner loop, the
+fitting of model parameters for given values of \(p\) and \(q\), and
+selecting the hyperparameters with the best overall AIC value.
+
+    \subsection{Simulations}\label{simulations}
+
+    TODO: switch to consistent step-function display of instantaneous rate.
+
+    We simulate data with parameters to match the stylized behaviour of the
+social media time series of previous work
+\cite{crane_robust_2008,mitchell_hawkes_2010,rizoiu_expecting_2017}, to
+test the efficacy of the proposed method.
+
+
+
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{chapter_sparse_hawkes_files/chapter_sparse_hawkes_30_0.pdf}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{chapter_sparse_hawkes_files/chapter_sparse_hawkes_30_1.pdf}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{chapter_sparse_hawkes_files/chapter_sparse_hawkes_30_2.pdf}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+    Extensive grid search for optimsal parameters is expensive, so we select
+both regularisation parameters using optimal sequential sampling by
+Gaussian process regression of the combined objective function
+\cite{snoek_practical_2012} using the software package
+\href{https://github.com/scikit-optimize/scikit-optimize}{scikit-optimize}.
+
+
+\texttt{\color{outcolor}Out[{\color{outcolor}27}]:}
+    
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{chapter_sparse_hawkes_files/chapter_sparse_hawkes_32_0.png}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+
+    With a single regularisation parameter, only for the background rate
+coefficient \(\omega_j\), we recover the background rate efficiently.
+
+
+\texttt{\color{outcolor}Out[{\color{outcolor}28}]:}
+    
+    \begin{center}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{chapter_sparse_hawkes_files/chapter_sparse_hawkes_34_0.png}
+    \end{center}
+    { \hspace*{\fill} \\}
+    
+
+    \subsection{How to simulate a Hawkes
+process}\label{how-to-simulate-a-hawkes-process}
+
+Here we follow a standard "thinning" method of simulating Hawkes
+processes, specialised from Algorithm 7.5.IV of Daley and Vere-Jones'
+\emph{Introduction to the Theory of Point Processes Volume 1}
+\cite{daley_introduction_2003}, restating Ogata's original Algorithm 2
+(\cite{ogata_lewis_1981}. Here we present, informally, a simpler,
+specific version for linear Hawkes processes.
+
+For clarity, we will use the representation of the Hawkes process as an
+immigrant-birth process, where the recursive "self-excited" component
+corresponds to the "births". We will assume that we are given a list of
+arrival times of immigrants, \(A=\{a_1,a_2,\dots,a_N\}\) from a
+realisation of the immigrant process. In this case, that immigrant
+process is, specifically, the inhomogenous Poisson process with
+unconditional intensity \(\mu(t)\). We associate a birth process \(X_i\)
+with each immigrant \(a_i\). Each such process is distributed
+independently of all other families, whose combined superposition is the
+final Hawkes process (\cite{hawkes_cluster_1974}.
+
+The clusters are generated as follows. For each \(a_i \in A\),
+independently generate children \(a_{i1},a_{i2}\dots\) according to a
+Poisson process with intensity \(\phi(t-a_i)\). Then, each child
+\(a_{ij}\) of \(a_i\) again generates a Poisson process with intensity
+\(\phi(t − a_{ij})\), and so on. The collection of all generated points
+from all descendants forms the Hawkes process.
+
+It suffices to know how to simulate a Poisson process with inhomogenous
+rate \(\phi\) started any point \(t_i\). We will assume that \(\phi\) is
+a.e. continuous \(L_1\) integrable and eventually decreasing in \(t\).
+We associate with \(\phi\) a "majorant", \(\phi^{**}\) such that
+\[\phi^{**}(t)\geq\phi(t), \forall t>0\] and \(\phi^{**}\) is
+non-increasing and integrable. As an aside, we mention that for the
+unimodal influence kernels used in the current paper, such majorants are
+trivial to construct.
+
+We will use the fact that there is some time \(T>0\) such that we do not
+consider events after it, i.e. that we only care about arrival times on
+\([0,T]\), and so only children that occur before time \(T\) can be
+relevent.
+
+\subsubsection{Algorithm: Ogata's thinning
+algorithm}\label{algorithm-ogatas-thinning-algorithm}
+
+Our goal is to simulate the set \(S=\mathrm{children}(a_\chi)\).
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Set \(i=1, t=t_i\), \(S=\varnothing\)
+\item
+  Generate \(\Delta\sim \operatorname{Exp}(1/\phi^{**}(t))\)
+\item
+  Set \(t\leftarrow t+\Delta\)
+\item
+  If \(t\geq T\), halt.
+\item
+  With probability \(P=\frac{\phi(t)}{\phi^{**}(t)}\), set
+  \(S\leftarrow S\cup \{t\}\).
+\item
+  Continue from step 2.
+\end{enumerate}
+
+    \subsection{Conclusions}\label{conclusions}
+
+    TODO
+
+    \subsection{Appendix and nonsense}\label{appendix-and-nonsense}
+
+
+    Given two ML fitted models, \((M_1,\hat{\theta}^M_1)\) and
+\((M_2\,\hat{\theta}^M_2)\), the difference in their AIC values is an
+estimate of the relative Kullback-Leibler divergence of the inferred
+measures \(\hat{\mu_1},\hat{\mu_2}\) from the unknown true distribution,
+\(\mu\) i.e.
+
+\[\mathrm{AIC}(X,M_1)-\mathrm{AIC}(X,M_2) \simeq D_\mathrm{KL}(\mu\|\hat{\mu_1}) - D_\mathrm{KL}(\mu\|\hat{\mu_2})\]
+
+    mean delay \(\mu=2\tau \sqrt{\frac{2}{\pi}}\)
+
+mode \(\sqrt{2}\tau\)
+
+scale \(\sigma=\sqrt{\frac{\tau^2(3 \pi - 8)}{\pi}}\)
+
+We take fixed \(M\)-point lattice \(\tilde{\tau}\) and \(K\)-fixed
+scales \(\tilde{\sigma}.\)
+
+The parameter vector to be estimated then is
+\(\theta:=(\mu, \tilde{\omega}, \tilde{\kappa}).\)
+
+    The AIC is based on asymptotic arguments, and Sugiura's
+finite-sample-corrected version \emph{AICc}, has lower bias for most
+practical applications \cite{sugiura_further_1978}.
+
+\[{\mathrm {AICc}}:={\mathrm {AIC}}+{\frac {2d(d+1)}{N_T-d-1}}\]
+
+    For non-parametric extension to a parametric model, one usually
+penalizes only the non-parametric extensions to the model, such that
+they vanish as the penalty term increases. \cite{green_penalized_1987}
+
+\[\lim_{\pi\to\infty}\hat{\theta}_\pi'(\v t) =\hat{\theta}(\v t)\]
+
+I follow this practice here, penalizing only the deviations of
+\(\omega(t)\) from the parametric estimate.
+
+\[L_\pi(\v t;\mu,\phi):=-\int_0^T\lambda(t;\mu,\phi) \dd t + \int_0^T\log \lambda(t;\mu,\phi) \dd N_t - \pi\|\v \omega_\theta(t)\|_1\]
+
+    The waiting times are exponentially distributed given the intensity,
+i.e. their densities \(f_i(s)\) are given \[\begin{aligned}
+f_i(t)&\equiv f(t_{i+1}-t_i|\mathcal{F}(N(t_i)))\\
+&=\Lambda(t_i,t|\mathcal{F}(N(t_i))\exp\left(-t\Lambda(t_i,t|\mathcal{F}(N(t_i))\right)
+\end{aligned}\]
+
+    We also, when notationally convenient, use the equivalent representation
+as the left-continuous function that increments at each arrival time: \[
+N(t)-N(s):= \left|\{s:s\in \v{t}\,\text{ and }\,s\leq t\}\right| \,\mathrm{ for }\, t\geq s
+\]
+
+    \[N(t)\sim \operatorname{Pois}(\Lambda(t|\mathcal{F}(N(t)))\] where
+\(\Lambda(s,t|\mathcal{F}(N(t)))=\int_s^t \lambda(s|\mathcal{F}(N(s))).\)
+
+
+
+    % Add a bibliography block to the postdoc
+    
+    
+
+\bibliographystyle{apacite}
+\bibliography{refs}
+
+    
+    \end{document}
