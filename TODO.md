@@ -14,6 +14,8 @@
 ## Interval censored problem
 
 - quantify the IIR stuff
+- see Rubin for least squares formulation
+- concentration?
 
 
 ## general
