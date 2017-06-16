@@ -39,6 +39,7 @@ def _task_html(pth):
             # 'ln -f docs/refs.bib docs/'.format(pth=pth),
             'jupyter nbconvert --to html '
             # '--template=docs/{pth}_html.tpl '
+            '--TemplateExporter.exclude_output_prompt=True '
             '--FilesWriter.build_directory=docs/ '
             'docs/{pth}.ipynb'.format(pth=pth),
         ],
@@ -70,6 +71,7 @@ def _task_latex(pth):
             'ln -f docs/refs.bib _paper_output'.format(pth=pth),
             'jupyter nbconvert --to latex --template=docs/{pth}_print.tplx '
             '--FilesWriter.build_directory=_paper_output/ '
+            '--TemplateExporter.exclude_output_prompt=True '
             'docs/{pth}.ipynb'.format(pth=pth),
         ],
         clean=[
