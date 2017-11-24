@@ -1,6 +1,9 @@
 _paper_output/*
 !_paper_output/*.tex
+converted/*
+!converted/*.tex
 .doit.db
+docs/*.html
 
 .DS_Store
 
